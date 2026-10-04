@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seguimiento cliente - AM Recepción Símple</title>
+  <link rel="stylesheet" href="assets/css/styles.css?v=v4-stage4-16-github-ready">
+  <style>
+    .tracking-loading-screen{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;overflow:hidden;background:linear-gradient(rgba(11,35,63,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(11,35,63,.06) 1px,transparent 1px),radial-gradient(circle at 12% 18%,rgba(33,125,137,.22),transparent 28%),radial-gradient(circle at 86% 76%,rgba(183,40,56,.13),transparent 30%),linear-gradient(135deg,#f8fbfc 0%,#edf4f6 48%,#fff 100%);background-size:34px 34px,34px 34px,auto,auto,auto;color:#142233;transition:opacity .4s ease,visibility .4s ease}.tracking-loading-screen.is-hidden{opacity:0;visibility:hidden;pointer-events:none}.tracking-loading-card{position:relative;width:min(560px,100%);min-height:520px;padding:36px 28px 32px;text-align:center;overflow:hidden;background:rgba(255,255,255,.9);border:1px solid rgba(124,152,165,.42);border-radius:24px;box-shadow:0 30px 82px rgba(20,34,51,.2);backdrop-filter:blur(14px)}.tracking-loading-card:before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 0%,rgba(255,255,255,.72) 46%,transparent 58%);transform:translateX(-120%);animation:trackingScanCard 2.8s ease-in-out infinite;pointer-events:none}.tracking-loading-card:after{content:"";position:absolute;inset:18px;border-radius:20px;border:1px solid rgba(33,125,137,.1);pointer-events:none}.tracking-loading-card h2{position:relative;margin:0 0 10px;font-size:clamp(26px,6vw,40px);line-height:1.08;letter-spacing:0;color:#142233}.tracking-loading-logo-wrap{position:relative;z-index:2;display:grid;place-items:center;width:min(230px,64vw);min-height:132px;margin:22px auto 16px;border-radius:18px;background:rgba(255,255,255,.9);box-shadow:0 20px 45px rgba(20,34,51,.16);animation:trackingLogoFloat 2.8s ease-in-out infinite}.tracking-loading-logo{width:min(205px,58vw);height:auto;display:block}.tracking-sync-core{position:relative;z-index:2;width:178px;height:112px;margin:12px auto 4px}.tracking-sync-halo,.tracking-sync-halo:before,.tracking-sync-halo:after{content:"";position:absolute;left:50%;top:50%;border-radius:999px;transform:translate(-50%,-50%)}.tracking-sync-halo{width:118px;height:118px;background:radial-gradient(circle,rgba(95,198,214,.14),transparent 62%);animation:trackingSyncPulse 2.4s ease-in-out infinite}.tracking-sync-halo:before{width:92px;height:92px;border:1px solid rgba(33,125,137,.18);border-top-color:rgba(183,40,56,.36);animation:trackingSyncSpin 5.2s linear infinite}.tracking-sync-halo:after{width:54px;height:54px;border:1px dashed rgba(45,79,146,.28);animation:trackingSyncSpinReverse 4.2s linear infinite}.tracking-gear{position:absolute;display:block;border-radius:50%;background:radial-gradient(circle,#fff 0 20%,transparent 21%),radial-gradient(circle,rgba(255,255,255,.9) 0 34%,transparent 35%),repeating-conic-gradient(from 0deg,#217d89 0 12deg,transparent 12deg 24deg),conic-gradient(#217d89,#5fc6d6,#217d89);filter:drop-shadow(0 14px 20px rgba(20,34,51,.16))}.tracking-gear-main{width:66px;height:66px;left:50%;top:48%;transform:translate(-50%,-50%);animation:trackingGearSpin 2.5s linear infinite}.tracking-gear-small{width:42px;height:42px;left:28px;top:23px;background:radial-gradient(circle,#fff 0 20%,transparent 21%),radial-gradient(circle,rgba(255,255,255,.9) 0 34%,transparent 35%),repeating-conic-gradient(from 0deg,#2d4f92 0 12deg,transparent 12deg 24deg),conic-gradient(#2d4f92,#5fc6d6,#2d4f92);animation:trackingGearSpinReverse 2s linear infinite}.tracking-gear-red{width:36px;height:36px;right:30px;bottom:22px;background:radial-gradient(circle,#fff 0 20%,transparent 21%),radial-gradient(circle,rgba(255,255,255,.9) 0 34%,transparent 35%),repeating-conic-gradient(from 0deg,#b72838 0 12deg,transparent 12deg 24deg),conic-gradient(#b72838,#f06b78,#b72838);animation:trackingGearSpinReverse 1.8s linear infinite}.tracking-loading-words{position:relative;width:min(360px,100%);height:34px;margin:10px auto 0;color:#0f6672;font-size:15px;font-weight:900;letter-spacing:0;text-transform:uppercase}.tracking-loading-words span{position:absolute;inset:0;display:grid;place-items:center;opacity:0;transform:translateY(8px) scale(.98);animation:trackingWordCycle 12.5s ease-in-out infinite}.tracking-loading-words span:nth-child(2){animation-delay:2.5s}.tracking-loading-words span:nth-child(3){animation-delay:5s}.tracking-loading-words span:nth-child(4){animation-delay:7.5s}.tracking-loading-words span:nth-child(5){animation-delay:10s}.tracking-loading-card p{position:relative;margin:10px auto 0;max-width:390px;color:#526579;font-size:16px;line-height:1.45}.tracking-loading-bar{position:relative;overflow:hidden;height:12px;width:min(390px,100%);margin:20px auto 0;border-radius:999px;background:#d9e4ea;box-shadow:inset 0 0 0 1px rgba(90,118,130,.14)}.tracking-loading-bar:before{content:"";position:absolute;inset:0;width:46%;border-radius:inherit;background:linear-gradient(90deg,#217d89,#6fd0df,#b72838);animation:trackingLoadingMove 1.45s ease-in-out infinite}@keyframes trackingScanCard{0%,48%{transform:translateX(-125%)}100%{transform:translateX(125%)}}@keyframes trackingLogoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}@keyframes trackingSyncSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}@keyframes trackingSyncSpinReverse{to{transform:translate(-50%,-50%) rotate(-360deg)}}@keyframes trackingSyncPulse{0%,100%{transform:translate(-50%,-50%) scale(.94);opacity:.72}50%{transform:translate(-50%,-50%) scale(1.05);opacity:1}}@keyframes trackingGearSpin{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}@keyframes trackingGearSpinReverse{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}@keyframes trackingWordCycle{0%,100%{opacity:0;transform:translateY(8px) scale(.98)}8%,16%{opacity:1;transform:translateY(0) scale(1)}24%{opacity:0;transform:translateY(-8px) scale(.98)}}@keyframes trackingLoadingMove{0%{transform:translateX(-120%)}100%{transform:translateX(230%)}}@media(max-width:520px){.tracking-loading-card{min-height:520px;padding:28px 18px 24px}.tracking-loading-logo-wrap{min-height:118px}.tracking-sync-core{width:152px}}
+    html,
+    body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+    body.tracking-booting .tracking-header,
+    body.tracking-booting .tracking-main { visibility: hidden; }
+    .tracking-loading-screen {
+      width: 100%;
+      max-width: 100%;
+      justify-items: center;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+    .tracking-loading-card {
+      width: min(560px, 100%);
+      max-width: 100%;
+      margin-inline: auto;
+      box-sizing: border-box;
+    }
+    .tracking-loading-screen{background:radial-gradient(circle at 15% 18%,rgba(33,125,137,.22),transparent 28%),radial-gradient(circle at 82% 76%,rgba(183,40,56,.18),transparent 32%),linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px),#101419;background-size:auto,auto,34px 34px,34px 34px,auto;color:#f4f8fb}.tracking-loading-card{background:rgba(15,22,29,.92);border-color:rgba(95,198,214,.28);box-shadow:0 34px 90px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.08)}.tracking-loading-card:before{background:linear-gradient(115deg,transparent 0%,rgba(95,198,214,.18) 46%,transparent 58%)}.tracking-loading-card:after{border-color:rgba(95,198,214,.12)}.tracking-loading-card h2{color:#f4f8fb;text-shadow:0 8px 28px rgba(0,0,0,.38)}.tracking-loading-logo-wrap{background:rgba(255,255,255,.96);box-shadow:0 22px 54px rgba(0,0,0,.36)}.tracking-loading-words{color:#7ee6f4}.tracking-loading-card p{color:#c9d7e2}.tracking-loading-bar{background:#263441;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+    @media (max-width: 520px) {
+      .tracking-loading-screen {
+        padding: 16px;
+        place-items: center;
+      }
+      .tracking-loading-card {
+        width: 100%;
+        max-width: 100%;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body data-page="tracking" class="tracking-page tracking-booting">
+  <div class="tracking-loading-screen" data-tracking-loading>
+    <div class="tracking-loading-card">
+      <h2 data-tracking-loading-title>Cargando datos del veh&iacute;culo</h2>
+      <div class="tracking-loading-logo-wrap" aria-hidden="true">
+        <img class="tracking-loading-logo" src="automotriz-medina-logo.png" alt="">
+      </div>
+      <div class="tracking-sync-core" aria-hidden="true">
+        <span class="tracking-sync-halo"></span>
+        <span class="tracking-gear tracking-gear-main"></span>
+        <span class="tracking-gear tracking-gear-small"></span>
+        <span class="tracking-gear tracking-gear-red"></span>
+      </div>
+      <div class="tracking-loading-words" aria-hidden="true">
+        <span>Sincronizando</span>
+        <span>Validando</span>
+        <span>Leyendo expediente</span>
+        <span>Registro de token</span>
+        <span>Examinando fotograf&iacute;as</span>
+      </div>
+      <p data-tracking-loading-note>Estamos preparando la informaci&oacute;n de tu veh&iacute;culo.</p>
+      <div class="tracking-loading-bar" aria-hidden="true"></div>
+    </div>
+  </div>
+  <header class="public-header tracking-header">
+    <div class="brand"><div class="brand-mark">AM</div><div><h1>Automotriz Medina</h1><p>Seguimiento del vehículo</p></div></div>
+    <span></span>
+  </header>
+  <main class="tracking-main">
+    <section class="tracking-card" data-tracking-view></section>
+  </main>
+<script src="assets/js/data-v4.js?v=v4-stage4-16-github-ready"></script>
+<script src="assets/js/cloud-sync.js?v=v4-stage4-16-github-ready"></script>
+  <script src="assets/js/store.js?v=v4-stage4-16-github-ready"></script>
+<script src="assets/js/app.js?v=v4-stage4-16-github-ready"></script>
+<script>
+  (function () {
+    const overlay = document.querySelector('[data-tracking-loading]');
+    if (!overlay) return;
+    const title = overlay.querySelector('[data-tracking-loading-title]');
+    const note = overlay.querySelector('[data-tracking-loading-note]');
+    let hidden = false;
+    function trackingIsReady() {
+      const view = document.querySelector('[data-tracking-view]');
+      return !!(view && (
+        view.querySelector('.tracking-vehicle-row, .tracking-finalized, .tracking-progress, .tracking-section')
+        || /Seguimiento no disponible|Token no v|No pudimos completar|identificador de este vehículo/i.test(view.textContent || '')
+      ));
+    }
+    function hideOverlay() {
+      if (hidden) return;
+      hidden = true;
+      document.body.classList.remove('tracking-booting');
+      overlay.classList.add('is-hidden');
+      setTimeout(() => overlay.remove(), 450);
+    }
+    function checkReady() {
+      if (trackingIsReady()) hideOverlay();
+    }
+    const observer = new MutationObserver(checkReady);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    document.addEventListener('DOMContentLoaded', checkReady);
+    window.addEventListener('load', checkReady);
+    setTimeout(checkReady, 500);
+    setTimeout(checkReady, 1200);
+    setTimeout(() => {
+      if (hidden) return;
+      if (title) title.textContent = 'Conexi\u00f3n lenta';
+      if (note) note.textContent = 'Tu conexi\u00f3n a internet parece estar lenta o inestable. La informaci\u00f3n de tu veh\u00edculo puede tardar un poco m\u00e1s en mostrarse. Mant\u00e9n esta pantalla abierta mientras completamos la carga.';
+    }, 15000);
+  }());
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

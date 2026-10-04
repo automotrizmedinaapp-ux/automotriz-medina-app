@@ -1,0 +1,16 @@
+{
+  "id": "./cristian.html",
+  "name": "Automotriz Medina Cristian",
+  "short_name": "AM Cristian",
+  "description": "Modulo directo de Cristian.",
+  "start_url": "./cristian.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f7f9",
+  "theme_color": "#0b233f",
+  "icons": [
+    { "src": "./pwa-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./pwa-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="manifest.webmanifest?v=v4-stage4-16-github-ready">
+  <meta name="theme-color" content="#0b233f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="AM Cliente">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="automotriz-medina-logo.png">
+  <title>Autorización cliente - AM Recepción Símple</title>
+  <link rel="stylesheet" href="assets/css/styles.css?v=v4-stage4-16-github-ready">
+  <script defer src="pwa-register.js?v=v4-stage4-16-github-ready"></script>
+  <style>
+    .client-loading-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      overflow: hidden;
+      width: 100%;
+      max-width: 100%;
+      justify-items: center;
+      background:
+        linear-gradient(rgba(11, 35, 63, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(11, 35, 63, 0.06) 1px, transparent 1px),
+        radial-gradient(circle at 12% 18%, rgba(33, 125, 137, 0.22), transparent 28%),
+        radial-gradient(circle at 86% 76%, rgba(183, 40, 56, 0.13), transparent 30%),
+        linear-gradient(135deg, #f8fbfc 0%, #edf4f6 48%, #ffffff 100%);
+      background-size: 34px 34px, 34px 34px, auto, auto, auto;
+      color: #142233;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+    .client-loading-screen.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .client-loading-card {
+      position: relative;
+      width: min(560px, 100%);
+      max-width: 100%;
+      margin-inline: auto;
+      min-height: 520px;
+      padding: 36px 28px 32px;
+      text-align: center;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(124, 152, 165, 0.42);
+      border-radius: 24px;
+      box-shadow: 0 30px 82px rgba(20, 34, 51, 0.2);
+      backdrop-filter: blur(14px);
+    }
+    .client-loading-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.72) 46%, transparent 58%);
+      transform: translateX(-120%);
+      animation: clientScanCard 2.8s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .client-loading-card::after {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(33, 125, 137, 0.1);
+      pointer-events: none;
+    }
+    .client-loading-stage {
+      position: relative;
+      width: min(300px, 76vw);
+      margin: 22px auto 16px;
+      display: grid;
+      place-items: center;
+    }
+    .client-loading-logo-wrap {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      width: min(230px, 64vw);
+      min-height: 132px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 20px 45px rgba(20, 34, 51, 0.16);
+      animation: clientLogoFloat 2.8s ease-in-out infinite;
+    }
+    .client-loading-logo {
+      width: min(205px, 58vw);
+      height: auto;
+      display: block;
+    }
+    .client-sync-core {
+      position: relative;
+      z-index: 2;
+      width: 178px;
+      height: 112px;
+      margin: 12px auto 4px;
+    }
+    .client-doc-transfer {
+      width: min(280px, 82vw);
+      height: 118px;
+    }
+    .client-folder {
+      position: absolute;
+      bottom: 20px;
+      width: 78px;
+      height: 54px;
+      border-radius: 10px 10px 8px 8px;
+      background: linear-gradient(180deg, #dff0f4, #bcd7df);
+      border: 1px solid rgba(33, 125, 137, 0.22);
+      box-shadow: 0 16px 28px rgba(20, 34, 51, 0.12);
+    }
+    .client-folder::before {
+      content: "";
+      position: absolute;
+      left: 10px;
+      top: -13px;
+      width: 36px;
+      height: 18px;
+      border-radius: 8px 8px 3px 3px;
+      background: #dff0f4;
+      border: 1px solid rgba(33, 125, 137, 0.2);
+      border-bottom: 0;
+    }
+    .client-folder-from { left: 12px; }
+    .client-folder-to { right: 12px; background: linear-gradient(180deg, #f7e8eb, #e4c6cc); border-color: rgba(183, 40, 56, 0.22); }
+    .client-folder-to::before { background: #f7e8eb; border-color: rgba(183, 40, 56, 0.2); }
+    .client-transfer-line {
+      position: absolute;
+      left: 92px;
+      right: 92px;
+      top: 62px;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(33,125,137,0.16), rgba(33,125,137,0.58), rgba(183,40,56,0.18));
+      overflow: hidden;
+    }
+    .client-transfer-line::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      width: 38%;
+      border-radius: inherit;
+      background: #5fc6d6;
+      animation: clientPaperLine 1.45s ease-in-out infinite;
+    }
+    .client-paper {
+      position: absolute;
+      left: 76px;
+      top: 28px;
+      width: 26px;
+      height: 34px;
+      border-radius: 5px;
+      background: #ffffff;
+      border: 1px solid rgba(45, 79, 146, 0.2);
+      box-shadow: 0 12px 24px rgba(20, 34, 51, 0.13);
+      animation: clientPaperMove 2.4s ease-in-out infinite;
+    }
+    .client-paper::before,
+    .client-paper::after {
+      content: "";
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      height: 2px;
+      border-radius: 999px;
+      background: rgba(33, 125, 137, 0.36);
+    }
+    .client-paper::before { top: 11px; }
+    .client-paper::after { top: 18px; }
+    .client-paper:nth-child(5) { animation-delay: 0s; }
+    .client-paper:nth-child(6) { animation-delay: 0.52s; transform: scale(0.92); }
+    .client-paper:nth-child(7) { animation-delay: 1.04s; transform: scale(0.84); }
+    .client-sync-halo,
+    .client-sync-halo::before,
+    .client-sync-halo::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      border-radius: 999px;
+      transform: translate(-50%, -50%);
+    }
+    .client-sync-halo {
+      width: 118px;
+      height: 118px;
+      background: radial-gradient(circle, rgba(95, 198, 214, 0.14), transparent 62%);
+      animation: clientSyncPulse 2.4s ease-in-out infinite;
+    }
+    .client-sync-halo::before {
+      width: 92px;
+      height: 92px;
+      border: 1px solid rgba(33, 125, 137, 0.18);
+      border-top-color: rgba(183, 40, 56, 0.36);
+      animation: clientSyncSpin 5.2s linear infinite;
+    }
+    .client-sync-halo::after {
+      width: 54px;
+      height: 54px;
+      border: 1px dashed rgba(45, 79, 146, 0.28);
+      animation: clientSyncSpinReverse 4.2s linear infinite;
+    }
+    .client-gear {
+      position: absolute;
+      display: block;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, #ffffff 0 20%, transparent 21%),
+        radial-gradient(circle, rgba(255,255,255,0.9) 0 34%, transparent 35%),
+        repeating-conic-gradient(from 0deg, #217d89 0 12deg, transparent 12deg 24deg),
+        conic-gradient(#217d89, #5fc6d6, #217d89);
+      filter: drop-shadow(0 14px 20px rgba(20, 34, 51, 0.16));
+    }
+    .client-gear-main {
+      width: 66px;
+      height: 66px;
+      left: 50%;
+      top: 48%;
+      transform: translate(-50%, -50%);
+      animation: clientGearSpin 2.5s linear infinite;
+    }
+    .client-gear-small {
+      width: 42px;
+      height: 42px;
+      left: 28px;
+      top: 23px;
+      background:
+        radial-gradient(circle, #ffffff 0 20%, transparent 21%),
+        radial-gradient(circle, rgba(255,255,255,0.9) 0 34%, transparent 35%),
+        repeating-conic-gradient(from 0deg, #2d4f92 0 12deg, transparent 12deg 24deg),
+        conic-gradient(#2d4f92, #5fc6d6, #2d4f92);
+      animation: clientGearSpinReverse 2s linear infinite;
+    }
+    .client-gear-red {
+      width: 36px;
+      height: 36px;
+      right: 30px;
+      bottom: 22px;
+      background:
+        radial-gradient(circle, #ffffff 0 20%, transparent 21%),
+        radial-gradient(circle, rgba(255,255,255,0.9) 0 34%, transparent 35%),
+        repeating-conic-gradient(from 0deg, #b72838 0 12deg, transparent 12deg 24deg),
+        conic-gradient(#b72838, #f06b78, #b72838);
+      animation: clientGearSpinReverse 1.8s linear infinite;
+    }
+    .client-sync-bit {
+      position: absolute;
+      display: block;
+      width: 10px;
+      height: 10px;
+      border-radius: 4px;
+      background: #5fc6d6;
+      box-shadow: 0 0 0 8px rgba(95, 198, 214, 0.1);
+      animation: clientDataDot 2.8s ease-in-out infinite;
+    }
+    .client-sync-bit:nth-child(5) { left: 6px; bottom: 22px; animation-delay: 0s; }
+    .client-sync-bit:nth-child(6) { right: 8px; top: 18px; background: #b72838; animation-delay: 0.55s; }
+    .client-sync-bar {
+      position: absolute;
+      display: block;
+      height: 3px;
+      width: 48px;
+      border-radius: 999px;
+      opacity: 0.5;
+      background: #217d89;
+      box-shadow: 0 12px 26px rgba(33, 125, 137, 0.14);
+      animation: clientDataLine 2.2s ease-in-out infinite;
+    }
+    .client-sync-bar:nth-child(7) { left: 20px; top: 62px; transform: rotate(8deg); }
+    .client-sync-bar:nth-child(8) { right: 18px; top: 45px; transform: rotate(-10deg); animation-delay: 0.55s; }
+    .client-loading-card h2 {
+      position: relative;
+      margin: 0 0 10px;
+      font-size: clamp(26px, 6vw, 40px);
+      line-height: 1.08;
+      letter-spacing: 0;
+      color: #142233;
+    }
+    .client-loading-card p {
+      position: relative;
+      margin: 10px auto 0;
+      max-width: 390px;
+      color: #526579;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+    .client-loading-words {
+      position: relative;
+      width: min(360px, 100%);
+      height: 34px;
+      margin: 10px auto 0;
+      color: #0f6672;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    .client-loading-words span {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+      animation: clientWordCycle 12.5s ease-in-out infinite;
+    }
+    .client-loading-words span:nth-child(2) { animation-delay: 2.5s; }
+    .client-loading-words span:nth-child(3) { animation-delay: 5s; }
+    .client-loading-words span:nth-child(4) { animation-delay: 7.5s; }
+    .client-loading-words span:nth-child(5) { animation-delay: 10s; }
+    .client-loading-bar {
+      position: relative;
+      overflow: hidden;
+      height: 12px;
+      width: min(390px, 100%);
+      margin: 20px auto 0;
+      border-radius: 999px;
+      background: #d9e4ea;
+      box-shadow: inset 0 0 0 1px rgba(90, 118, 130, 0.14);
+    }
+    .client-loading-bar::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      width: 46%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #217d89, #6fd0df, #b72838);
+      animation: clientLoadingMove 1.45s ease-in-out infinite;
+    }
+    @keyframes clientLoadingMove {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(230%); }
+    }
+    @keyframes clientScanCard {
+      0%, 48% { transform: translateX(-125%); }
+      100% { transform: translateX(125%); }
+    }
+    @keyframes clientLogoFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    @keyframes clientSyncSpin {
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    @keyframes clientSyncSpinReverse {
+      to { transform: translate(-50%, -50%) rotate(-360deg); }
+    }
+    @keyframes clientSyncPulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(0.94); opacity: 0.72; }
+      50% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+    }
+    @keyframes clientGearSpin {
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    @keyframes clientGearSpinReverse {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(-360deg); }
+    }
+    @keyframes clientDataDot {
+      0%, 100% { transform: translate(0, 0) scale(0.72); opacity: 0.36; }
+      38% { transform: translate(14px, 8px) scale(1.1); opacity: 1; }
+      72% { transform: translate(-8px, -10px) scale(0.9); opacity: 0.68; }
+    }
+    @keyframes clientDataLine {
+      0%, 100% { opacity: 0.18; transform: translateX(-10px) scaleX(0.72); }
+      50% { opacity: 0.72; transform: translateX(10px) scaleX(1.12); }
+    }
+    @keyframes clientPaperMove {
+      0% { transform: translateX(0) translateY(20px) rotate(-8deg) scale(0.82); opacity: 0; }
+      18% { opacity: 1; }
+      48% { transform: translateX(56px) translateY(-8px) rotate(3deg) scale(1); opacity: 1; }
+      82% { opacity: 1; }
+      100% { transform: translateX(120px) translateY(20px) rotate(8deg) scale(0.82); opacity: 0; }
+    }
+    @keyframes clientPaperLine {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(280%); }
+    }
+    @keyframes clientWordCycle {
+      0%, 100% { opacity: 0; transform: translateY(8px) scale(0.98); }
+      8%, 16% { opacity: 1; transform: translateY(0) scale(1); }
+      24% { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    }
+    @media (max-width: 520px) {
+      .client-loading-screen { padding: 16px; }
+      .client-loading-card { width: 100%; max-width: 100%; min-height: 520px; padding: 28px 18px 24px; }
+      .client-loading-logo-wrap { min-height: 118px; }
+      .client-sync-core { width: 152px; }
+    }
+  </style>
+</head>
+<body data-page="client" lang="es" spellcheck="true">
+  <div class="client-loading-screen" data-client-loading>
+    <div class="client-loading-card">
+      <h2 data-client-loading-title>Cargando expediente</h2>
+      <div class="client-loading-stage" aria-hidden="true">
+        <div class="client-loading-logo-wrap">
+          <img class="client-loading-logo" src="automotriz-medina-logo.png" alt="">
+        </div>
+      </div>
+      <div class="client-sync-core client-doc-transfer" aria-hidden="true">
+        <span class="client-folder client-folder-from"></span>
+        <span class="client-transfer-line"></span>
+        <span class="client-folder client-folder-to"></span>
+        <span class="client-paper"></span>
+        <span class="client-paper"></span>
+        <span class="client-paper"></span>
+      </div>
+      <div class="client-loading-words" aria-hidden="true">
+        <span>Sincronizando</span>
+        <span>Validando</span>
+        <span>Leyendo expediente</span>
+        <span>Registro de token</span>
+        <span>Preparando contrato</span>
+      </div>
+      <p data-client-loading-note>Estamos preparando la autorizaci&oacute;n y los datos de tu expediente.</p>
+      <div class="client-loading-bar" aria-hidden="true"></div>
+    </div>
+  </div>
+  <header class="public-header client-public-header">
+    <div class="brand client-brand"><img class="brand-logo" src="automotriz-medina-logo.png" alt="Automotriz Medina"><div><h1>Automotriz Medina</h1><p>Revisión y autorización</p></div></div>
+    <span></span>
+  </header>
+  <main class="public-main">
+    <section class="processing-only hidden" data-processing-only>
+      <article class="panel">
+        <div class="panel-body processing-box">
+          <div class="spinner"></div>
+          <h3 data-processing-title>Validando autorización</h3>
+          <p data-processing-message>Estamos procesando la información para crear la autorización.</p>
+        </div>
+      </article>
+    </section>
+    <section class="authorized-only hidden" data-authorized-only>
+      <article class="panel">
+        <div class="panel-header"><div><h3>Autorización recibida</h3><p>Gracias por confirmar la información.</p></div></div>
+        <div class="panel-body grid">
+          <p>Gracias por su autorización, ya podemos proceder con el diagnóstico o reparación de su vehículo.</p>
+          <p>Por acá le dejamos un link privado de seguimiento. En este enlace puede revisar los avances que el taller vaya publicando.</p>
+          <p class="muted-note">Normalmente los avances se actualizan cada 24 horas segun el proceso y la información disponible del taller.</p>
+          <a class="btn primary authorize-btn" href="seguimiento.html" data-tracking-link>Seguimiento de mi vehículo</a>
+        </div>
+      </article>
+    </section>
+    <section class="authorization-flow" data-authorization-flow>
+    <div data-client-summary></div>
+    <div class="grid">
+      <aside class="panel">
+        <div class="panel-header"><h3>Observaciones y daños</h3></div>
+        <div class="panel-body grid">
+          <div class="notice" data-client-observations></div>
+          <section class="grid" data-client-damages></section>
+        </div>
+      </aside>
+    </div>
+    <article class="panel photo-ack-card hidden" data-photo-ack-panel>
+      <div class="panel-body grid photo-ack-body">
+        <div class="photo-ack-status" data-photo-ack-status><span class="photo-ack-check">✓</span><strong data-photo-ack-title>Autorización registrada</strong></div>
+        <p data-photo-ack-primary>La autorización del vehículo ya fue firmada de manera presencial en el taller.</p>
+        <p class="hidden" data-photo-ack-secondary></p>
+        <button class="btn primary authorize-btn photo-ack-next" data-action="acknowledge-client-photos">Siguiente</button>
+      </div>
+    </article>
+    <article class="panel" data-client-terms-panel>
+      <div class="panel-header"><div><h3>Terminos y autorización</h3><p>Lea el documento antes de autorizar diagnóstico o reparación</p></div></div>
+      <div class="panel-body grid">
+        <div class="terms-box" tabindex="0" data-client-terms-box></div>
+        <label class="check-item terms-accept"><input type="checkbox" data-terms-check> He leído y acepto los términos del servicio. Confirmo que revisé el vehículo, informé las condiciones y daños que conozco y retiré mis objetos de valor.</label>
+        <button class="btn primary authorize-btn" data-action="authorize-client" disabled>Autorizar mi reparación / diagnóstico</button>
+      </div>
+    </article>
+    </section>
+  </main>
+<script src="assets/js/data-v4.js?v=v4-stage4-16-github-ready"></script>
+<script src="assets/js/cloud-sync.js?v=v4-stage4-16-github-ready"></script>
+  <script src="assets/js/store.js?v=v4-stage4-16-github-ready"></script>
+<script src="assets/js/app.js?v=v4-stage4-16-github-ready"></script>
+<script>
+  (function () {
+    const overlay = document.querySelector('[data-client-loading]');
+    if (!overlay) return;
+    const title = overlay.querySelector('[data-client-loading-title]');
+    const note = overlay.querySelector('[data-client-loading-note]');
+    let hidden = false;
+    function clientIsReady() {
+      const summary = document.querySelector('[data-client-summary]');
+      const authorized = document.querySelector('[data-authorized-only]:not(.hidden)');
+      const processing = document.querySelector('[data-processing-only]:not(.hidden)');
+      const hasSummary = summary && summary.textContent.trim().length > 12;
+      return !!(authorized || processing || hasSummary);
+    }
+    function hideOverlay() {
+      if (hidden) return;
+      hidden = true;
+      overlay.classList.add('is-hidden');
+      setTimeout(() => overlay.remove(), 450);
+    }
+    function checkReady() {
+      if (clientIsReady()) hideOverlay();
+    }
+    const observer = new MutationObserver(checkReady);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    document.addEventListener('DOMContentLoaded', checkReady);
+    window.addEventListener('load', checkReady);
+    setTimeout(checkReady, 500);
+    setTimeout(checkReady, 1200);
+    setTimeout(() => {
+      if (hidden) return;
+      if (title) title.textContent = 'Conexi\u00f3n lenta';
+      if (note) note.textContent = 'Tu conexi\u00f3n a internet parece estar lenta o inestable. La informaci\u00f3n de tu veh\u00edculo puede tardar un poco m\u00e1s en mostrarse. Mant\u00e9n esta pantalla abierta mientras completamos la carga.';
+    }, 15000);
+  }());
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

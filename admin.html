@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="manifest-admin.webmanifest?v=v4-stage4-16-github-ready">
+  <meta name="theme-color" content="#0b233f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="AM Admin">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="automotriz-medina-logo.png">
+  <title>Administrador - AM Recepción Símple</title>
+  <link rel="stylesheet" href="assets/css/styles.css?v=v4-stage4-16-github-ready">
+  <script defer src="pwa-register.js?v=v4-stage4-16-github-ready"></script>
+  <style>
+    .admin-startup{position:fixed;inset:0;z-index:10000;display:grid;grid-template-rows:1fr;min-height:100vh;min-height:100dvh;padding:clamp(20px,4vw,42px);overflow:hidden;background:#07131c;color:#f4fbff;font-family:Inter,"Segoe UI",Arial,sans-serif;isolation:isolate;transition:opacity .52s ease,visibility .52s ease}
+    .admin-startup::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(rgba(77,159,175,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(77,159,175,.08) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(to bottom,transparent,#000 25%,#000 80%,transparent)}
+    .admin-startup::after{content:"";position:absolute;inset:auto 0 0;height:3px;background:linear-gradient(90deg,#c6323d 0 22%,#35bfd0 22% 79%,#c6323d 79%);box-shadow:0 0 18px rgba(53,191,208,.65)}
+    .admin-startup.is-complete{opacity:0;visibility:hidden;pointer-events:none}
+    .admin-startup-center{display:grid;align-content:center;justify-items:center;min-width:0;width:100%;max-width:760px;margin:auto;text-align:center}
+    .admin-startup-visual{position:relative;width:min(100%,680px);aspect-ratio:1.9;display:grid;place-items:center;margin-bottom:clamp(18px,3vh,34px)}
+    .admin-startup-visual::before{content:"";position:absolute;inset:12% 4%;border:1px solid rgba(66,183,201,.16);clip-path:polygon(0 0,12% 0,12% 1px,88% 1px,88% 0,100% 0,100% 100%,88% 100%,88% calc(100% - 1px),12% calc(100% - 1px),12% 100%,0 100%)}
+    .admin-startup-circuit{position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 0 9px rgba(62,204,222,.48))}
+    .admin-startup-circuit .circuit-trace{fill:none;stroke:#53d9e7;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1200;animation:admin-logo-trace 4.6s ease-in-out infinite}
+    .admin-startup-circuit .circuit-detail{fill:none;stroke:#759aa8;stroke-width:1.5;stroke-dasharray:1200;animation:admin-logo-trace 4.6s ease-in-out .22s infinite}
+    .admin-startup-circuit .circuit-node{fill:#e34450;filter:drop-shadow(0 0 8px #e34450);animation:admin-node-pulse 1.8s ease-in-out infinite alternate}
+    .admin-startup-logo{position:relative;z-index:1;width:64%;isolation:isolate;animation:admin-neon-frame 4.8s ease-in-out infinite}
+    .admin-startup-logo::before{content:"";position:absolute;inset:-9% -7%;z-index:-2;border:1px solid rgba(83,217,231,.42);clip-path:polygon(0 0,18% 0,18% 2px,82% 2px,82% 0,100% 0,100% 100%,82% 100%,82% calc(100% - 2px),18% calc(100% - 2px),18% 100%,0 100%);filter:drop-shadow(0 0 8px #53d9e7);animation:admin-neon-border 2.4s ease-in-out infinite alternate}
+    .admin-startup-logo::after{content:"";position:absolute;inset:5% 7%;z-index:-3;border-radius:50%;background:radial-gradient(ellipse,rgba(62,204,222,.25),rgba(222,52,66,.12) 43%,transparent 72%);filter:blur(22px);animation:admin-neon-breathe 2.2s ease-in-out infinite}
+    .admin-startup-logo img{display:block;width:100%;height:auto;mix-blend-mode:screen;filter:invert(1) hue-rotate(180deg) saturate(2.3) brightness(1.35) contrast(1.32) drop-shadow(0 0 4px rgba(255,255,255,.88)) drop-shadow(0 0 11px rgba(65,211,231,.74)) drop-shadow(0 0 20px rgba(224,48,64,.38));animation:admin-neon-ignite 4.8s linear infinite}
+    .admin-startup-logo .admin-startup-logo-aura{position:absolute;inset:0;z-index:-1;opacity:.66;filter:invert(1) hue-rotate(180deg) saturate(3) brightness(1.65) contrast(1.35) blur(9px) drop-shadow(0 0 18px #46d5e5) drop-shadow(0 0 28px #e23849);animation:admin-neon-aura 2.3s ease-in-out infinite alternate}
+    .admin-startup-logo-spark{position:absolute;z-index:4;width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 5px #fff,0 0 13px #58e7f1,0 0 25px #58e7f1;opacity:0;animation:admin-neon-spark 4.8s linear infinite}
+    .admin-startup-logo-spark.spark-one{left:25%;top:18%}.admin-startup-logo-spark.spark-two{right:16%;top:43%;animation-delay:.55s}.admin-startup-logo-spark.spark-three{left:43%;bottom:13%;animation-delay:1.1s}
+    .admin-startup-scan{position:absolute;left:6%;right:6%;top:0;height:2px;background:linear-gradient(90deg,transparent,#7be8ee 18%,#fff 50%,#7be8ee 82%,transparent);box-shadow:0 0 22px 5px rgba(67,210,225,.42);animation:admin-scan 3.2s ease-in-out infinite alternate}
+    .admin-startup-heading{margin:0;font-size:clamp(24px,5vw,38px);font-weight:900;line-height:1.1}
+    .admin-startup-subtitle{margin:10px 0 0;color:#aac2cc;font-size:clamp(13px,2.6vw,16px)}
+    .admin-startup-pulses{display:flex;gap:8px;margin-top:24px}
+    .admin-startup-pulses span{width:24px;height:3px;background:#45cbd7;box-shadow:0 0 12px #45cbd7;animation:admin-pulse 1.3s ease-in-out infinite}
+    .admin-startup-pulses span:nth-child(2){animation-delay:.18s}.admin-startup-pulses span:nth-child(3){animation-delay:.36s}.admin-startup-pulses span:nth-child(4){animation-delay:.54s}
+    @keyframes admin-logo-trace{0%{stroke-dashoffset:1200;opacity:.25}38%,75%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:-1200;opacity:.35}}
+    @keyframes admin-node-pulse{from{opacity:.2}to{opacity:1}}
+    @keyframes admin-neon-frame{0%,7%{transform:scale(.965)}12%,100%{transform:scale(1)}}
+    @keyframes admin-neon-ignite{0%,4%{opacity:.08;filter:invert(1) hue-rotate(180deg) saturate(.4) brightness(.25) contrast(1.2)}6%{opacity:.86}8%{opacity:.18}11%{opacity:1}14%{opacity:.32}17%,74%{opacity:1}76%{opacity:.72}78%,100%{opacity:1}}
+    @keyframes admin-neon-aura{from{opacity:.38;transform:scale(.985)}to{opacity:.78;transform:scale(1.025)}}
+    @keyframes admin-neon-border{from{opacity:.34}to{opacity:1}}
+    @keyframes admin-neon-breathe{0%,100%{opacity:.48;transform:scale(.94)}50%{opacity:1;transform:scale(1.08)}}
+    @keyframes admin-neon-spark{0%,10%,100%{opacity:0;transform:scale(.2)}11%{opacity:1;transform:scale(1.4)}12%{opacity:.25;transform:scale(.7)}13%{opacity:1;transform:scale(1)}15%{opacity:0;transform:scale(.2)}}
+    @keyframes admin-scan{from{top:10%;opacity:.3}to{top:88%;opacity:1}}
+    @keyframes admin-pulse{0%,100%{opacity:.2;transform:scaleY(1)}50%{opacity:1;transform:scaleY(2)}}
+    @media(max-width:600px){.admin-startup{padding:18px}.admin-startup-visual{width:100%;aspect-ratio:1.55;margin-bottom:18px}.admin-startup-logo{width:72%}}
+    @media(prefers-reduced-motion:reduce){.admin-startup-circuit .circuit-trace,.admin-startup-circuit .circuit-detail,.admin-startup-circuit .circuit-node,.admin-startup-logo,.admin-startup-logo::before,.admin-startup-logo::after,.admin-startup-logo img,.admin-startup-logo-spark,.admin-startup-scan,.admin-startup-pulses span{animation:none}.admin-startup-circuit .circuit-trace,.admin-startup-circuit .circuit-detail{stroke-dashoffset:0}.admin-startup-scan{top:50%}.admin-startup{transition:none}}
+  </style>
+</head>
+<body data-page="admin" lang="es" spellcheck="true">
+  <div class="admin-startup" data-admin-startup role="status" aria-live="polite" aria-label="Iniciando sistema">
+    <div class="admin-startup-center">
+      <div class="admin-startup-visual" aria-hidden="true">
+        <svg class="admin-startup-circuit" viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg">
+          <path class="circuit-trace" d="M127 85l36-35h374l36 35v210l-36 35H163l-36-35zM97 112h30m446 0h30M97 268h30m446 0h30M350 18v32m0 280v32"/>
+          <path class="circuit-detail" d="M165 79h370M157 301h386M145 150H65m490 0h80M145 229H65m490 0h80M218 50V20m264 30V20M218 330v30m264-30v30"/>
+          <circle class="circuit-node" cx="127" cy="85" r="5"/><circle class="circuit-node" cx="573" cy="295" r="5"/>
+        </svg>
+        <div class="admin-startup-logo">
+          <img class="admin-startup-logo-aura" src="automotriz-medina-logo.png" alt="" aria-hidden="true">
+          <img src="automotriz-medina-logo.png" alt="Logo de Automotriz Medina">
+          <span class="admin-startup-logo-spark spark-one" aria-hidden="true"></span>
+          <span class="admin-startup-logo-spark spark-two" aria-hidden="true"></span>
+          <span class="admin-startup-logo-spark spark-three" aria-hidden="true"></span>
+        </div>
+        <div class="admin-startup-scan"></div>
+      </div>
+      <h2 class="admin-startup-heading">Iniciando sistema</h2>
+      <p class="admin-startup-subtitle">Preparando el dashboard de Automotriz Medina</p>
+      <div class="admin-startup-pulses" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    </div>
+  </div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">AM</div><div><h1>Administrador</h1><p>Control de recepciones</p></div></div>
+      <select class="mobile-nav" data-mobile-nav>
+        <option value="dashboard">Dashboard</option>
+        <option value="workshop-dashboard">Vehículos en taller</option>
+        <option value="finished-dashboard">Vehículos finalizados</option>
+        <option value="employee-edwin-dashboard">Vehículos de Edwin</option>
+        <option value="employee-cristian-dashboard">Vehículos de Cristian</option>
+        <option value="employee-rafael-dashboard">Vehículos de Rafael</option>
+        <option value="notificaciones">Notificaciones</option>
+        <option value="vineta">Viñeta Virtual</option>
+        <option value="archived-dashboard">Archivados</option>
+        <option value="trash-dashboard">Papelera de reciclaje</option>
+        <option value="visor-local">Visor</option>
+      </select>
+      <nav class="nav">
+        <button data-section-target="dashboard" data-icon="⌂">Dashboard</button>
+        <div data-dashboard-filter-menu>
+          <button data-admin-filter="workshop" data-icon="▦">Vehículos en taller</button>
+          <div class="nav-submenu hidden" data-employee-filter-menu>
+            <button data-admin-filter="employee" data-employee-filter="edwin">Edwin</button>
+            <button data-admin-filter="employee" data-employee-filter="cristian">Cristian</button>
+            <button data-admin-filter="employee" data-employee-filter="rafael">Rafael</button>
+          </div>
+          <button data-section-target="notificaciones" data-icon="✉">Notificaciones</button>
+          <button data-section-target="vineta" data-icon="◇">Viñeta Virtual</button>
+          <div class="nav-secondary-group">
+            <button data-admin-filter="archived" data-icon="▤">Archivados</button>
+            <button data-admin-filter="trash" data-icon="×">Papelera de reciclaje</button>
+            <button data-section-target="visor-local" data-icon="◉">Visor</button>
+          </div>
+        </div>
+        <div class="hidden" data-expediente-menu>
+          <button data-section-target="vineta" data-expediente-vineta="true" data-icon="◇">Viñeta Virtual</button>
+        </div>
+      </nav>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div><h2>Dashboard administrador</h2><p>Control de recepciones, autorizaciones y seguimiento.</p></div>
+        <div class="btn-row">
+          <button type="button" class="btn" data-action="reload-app" title="Buscar una versión nueva y recargar">↻ Recargar</button>
+          <details class="action-menu">
+            <summary class="btn primary">Menú</summary>
+            <div class="action-menu-list">
+              <button class="btn" data-theme-toggle>Modo oscuro</button>
+              <button class="btn" data-action="configure-local-archive-folder">Configurar carpeta de exportaciones</button>
+            </div>
+          </details>
+          <input class="hidden" type="file" data-backup-input="full" accept=".amr,.json,application/json">
+          <input class="hidden" type="file" data-backup-input="single" accept=".amr,.json,application/json">
+        </div>
+      </header>
+      <div class="content">
+        <article class="panel admin-search-panel" data-admin-search-panel>
+          <div class="panel-header">
+            <div><h3>Búsqueda y catálogo</h3><p>Filtre por cliente, teléfono, marca, modelo, año, placa, VIN, técnico, estado, motivo o rango de fechas.</p></div>
+            <button class="btn" data-action="clear-admin-search">Limpiar búsqueda</button>
+          </div>
+          <div class="panel-body form-grid">
+            <div class="field full"><label>Buscar</label><input data-admin-search placeholder="Cliente, teléfono, marca, modelo, placa, VIN, técnico, estado o motivo"></div>
+            <div class="field"><label>Desde</label><input type="date" data-admin-date-from></div>
+            <div class="field"><label>Hasta</label><input type="date" data-admin-date-to></div>
+            <div class="field"><label>Año del vehículo</label><input data-admin-vehicle-year placeholder="Ej. 2020"></div>
+            <div class="field"><label>Resultados</label><input readonly data-admin-search-count value="0"></div>
+          </div>
+        </article>
+
+        <section data-section="dashboard">
+          <div class="grid dashboard-metrics" data-admin-metrics></div>
+          <article class="panel dashboard-quick-search-panel">
+            <div class="panel-body form-grid">
+              <div class="field full">
+                <label>Buscar en dashboard</label>
+                <input type="search" data-dashboard-quick-search placeholder="Marca, modelo, técnico, placa, VIN, cliente, teléfono, estado, motivo o recepción">
+              </div>
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-header"><div><h3>Recepciones</h3><p>Seleccione una recepción para abrir el perfil del cliente y expediente</p></div><a class="btn primary dashboard-reception-link" href="empleado.html">Recepción</a></div>
+            <div class="trash-bulk-toolbar hidden" data-trash-bulk-toolbar>
+              <label class="trash-select-all"><input type="checkbox" data-trash-select-all> Seleccionar todos</label>
+              <span data-trash-selected-count>0 seleccionados</span>
+              <button type="button" class="btn danger" data-action="purge-selected-trash" disabled>Eliminar seleccionados</button>
+            </div>
+            <div class="mobile-vehicle-gallery" data-admin-mobile-gallery></div>
+            <div class="table-wrap mobile-hidden-table">
+              <table>
+                <thead><tr><th>Vehículo</th><th>Fotografía</th><th>Tarjeta reverso</th><th>Tarjeta frente</th><th>Técnico</th><th>Tiempo límite</th><th>Estado</th><th>Autorización</th><th>Cliente</th><th>Motivo</th><th>Recepción</th></tr></thead>
+                <tbody data-reception-table></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section data-section="clientes" class="hidden">
+          <article class="panel">
+            <div class="panel-header">
+              <div><h3>Clientes</h3><p>Historial agrupado por cliente, vehículos y expedientes.</p></div>
+            </div>
+            <div class="panel-body grid" data-client-catalog></div>
+          </article>
+        </section>
+
+        <section data-section="visor-local" class="hidden">
+          <article class="panel">
+            <div class="panel-header">
+              <div><h3>Visor</h3><p>Abra expedientes descargados sin volver a incorporarlos al sistema activo.</p></div>
+              <div class="btn-row">
+                <button class="btn" data-action="configure-local-archive-folder">Seleccionar carpeta</button>
+                <button class="btn primary" data-action="load-local-archives">Cargar expedientes</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="notice" data-local-archive-status>No hay carpeta de expedientes cargada.</div>
+              <div class="field full local-archive-search-box">
+                <label>Buscar en expedientes descargados</label>
+                <input type="search" data-local-archive-search placeholder="Cliente, teléfono, marca, modelo, placa, VIN, técnico, estado o recepción">
+              </div>
+              <div class="mobile-vehicle-gallery" data-local-archive-gallery></div>
+              <div class="table-wrap mobile-hidden-table">
+                <table>
+                  <thead><tr><th>Vehículo</th><th>Cliente</th><th>Técnico</th><th>Estado</th><th>Ubicación</th><th>Acción</th></tr></thead>
+                  <tbody data-local-archive-table></tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section data-section="visor" class="hidden">
+          <article class="panel">
+            <div class="panel-header">
+              <div><h3>Visor temporal de respaldo</h3><p>Abra un expediente respaldado sin mezclarlo con el dashboard.</p></div>
+              <div class="btn-row">
+                <button class="btn" data-action="select-backup-preview">Seleccionar expediente</button>
+                <button class="btn primary" data-action="restore-preview-backup" disabled data-preview-restore>Restaurar al dashboard</button>
+              </div>
+            </div>
+            <div class="panel-body grid">
+              <div class="backup-dropzone" data-backup-viewer-drop>
+                <strong>Arrastrar expediente aquí</strong>
+                <span>Compatible con respaldos individuales .amr del cliente.</span>
+              </div>
+              <input class="hidden" type="file" data-backup-viewer-input accept=".amr,.json,application/json">
+              <div data-backup-viewer-content>
+                <div class="notice">No hay expediente temporal cargado.</div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section data-section="vineta" class="hidden">
+          <article class="panel">
+            <div class="panel-header">
+              <div><h3>Viñeta Virtual</h3><p>Herramienta interna de Automotriz Medina.</p></div>
+            </div>
+            <div class="panel-body">
+              <iframe class="vineta-frame" src="https://xtoolautomd-bot.github.io/automotriz-medina-qr/" title="Viñeta Virtual"></iframe>
+            </div>
+          </article>
+        </section>
+
+        <section data-section="notificaciones" class="hidden">
+          <article class="panel">
+            <div class="panel-header">
+              <div><h3>Notificaciones</h3><p>Mensajes generales para empleados, sin asociarlos a un vehículo.</p></div>
+            </div>
+            <div class="panel-body form-grid">
+              <div class="field"><label>Empleado</label><select data-admin-notification-employee><option value="edwin">EDWIN</option><option value="rafael">RAFAEL</option><option value="cristian">CRISTIAN</option></select></div>
+              <div class="field"><label>Prioridad</label><select data-admin-global-notification-priority><option value="warn">Amarillo / advertencia</option><option value="danger">Rojo / urgente</option></select></div>
+              <div class="field full"><label>Mensaje</label><textarea data-admin-global-notification-text placeholder="Escriba la notificación general para el empleado"></textarea><div class="desktop-dictation-row"><button type="button" class="btn dictation-btn" data-action="start-dictation" data-dictation-target="[data-admin-global-notification-text]">Dictar</button></div></div>
+              <div class="field full"><button type="button" class="btn primary" data-action="send-global-notification">Enviar notificación</button></div>
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-header"><div><h3>Notificaciones enviadas</h3><p>Historial, confirmaciones de empleados y pendientes del administrador.</p></div><span class="pill warn" data-admin-notification-count>0 pendientes</span></div>
+            <div class="panel-body grid" data-admin-global-notifications></div>
+          </article>
+        </section>
+
+        <section data-section="nube" class="hidden">
+          <article class="panel">
+            <div class="panel-header">
+              <div><h3>Conexión nube</h3><p>Google Sheets y Drive para Automotriz Medina.</p></div>
+              <span class="pill info" data-cloud-status>Sin configurar</span>
+            </div>
+            <div class="panel-body grid">
+              <div class="notice">
+                Backend V4 conectado a la cuenta <strong>automotrizmedinaapp@gmail.com</strong>.
+              </div>
+              <div class="form-grid">
+                <div class="field full">
+                  <label>URL de Apps Script</label>
+                  <input data-cloud-endpoint value="https://script.google.com/macros/s/AKfycbwhzohmpF7t7931rxoNdilGmm_sClWlSBJJ4IhfhJpKMHI_S64RjtIXajMGb3BJvsEd/exec" placeholder="Backend V4">
+                </div>
+                <div class="field">
+                  <label>Cuenta Google</label>
+                  <input data-cloud-account value="automotrizmedinaapp@gmail.com">
+                </div>
+                <label class="check">
+                  <input type="checkbox" data-cloud-enabled>
+                  <span><strong>Activar guardado en nube</strong><small>Al guardar, se enviará respaldo al servidor.</small></span>
+                </label>
+              </div>
+              <div class="btn-row">
+                <button class="btn primary" data-action="save-cloud-config">Guardar configuración</button>
+                <button class="btn" data-action="test-cloud">Probar conexión</button>
+                <button class="btn" data-action="sync-cloud-now">Guardar ahora en nube</button>
+                <button class="btn" data-action="load-cloud-latest">Cargar último respaldo de nube</button>
+              </div>
+              <div class="notice" data-cloud-log>La conexión aún no se ha probado.</div>
+            </div>
+          </article>
+        <article class="panel">
+          <div class="panel-header"><div><h3>Servidor configurado</h3><p>Estado de la conexión con Google Drive y Google Sheets.</p></div></div>
+          <div class="panel-body grid">
+            <ol>
+              <li>La cuenta de datos V4 es <strong>automotrizmedinaapp@gmail.com</strong>.</li>
+              <li>El backend ya apunta a Google Apps Script.</li>
+              <li>La información se respalda en Google Drive y Google Sheets.</li>
+              <li>Use <strong>Probar conexión</strong> para validar el servidor.</li>
+              <li>Use <strong>Guardar ahora en nube</strong> para generar un respaldo manual.</li>
+            </ol>
+          </div>
+        </article>
+        </section>
+
+        <section data-section="expediente" class="hidden">
+          <div data-admin-file-empty class="notice warn">Seleccione una recepción en la lista para abrir su perfil/expediente.</div>
+          <article class="panel hidden" data-admin-file-panel>
+            <div class="panel-body grid">
+              <div class="admin-folder-tabs">
+                <button type="button" data-admin-file-tab="seguimiento">Seguimiento</button>
+                <button type="button" data-admin-file-tab="facturas">Facturas</button>
+                <button type="button" data-admin-file-tab="autorización">Expediente</button>
+                <button type="button" data-admin-file-tab="notificaciones">Notificación</button>
+              </div>
+              <div class="tabs hidden">
+                <button data-tab-target="seguimiento">Seguimiento</button>
+                <button data-tab-target="facturas">Facturas</button>
+                <button data-tab-target="autorización">Expediente</button>
+                <button data-tab-target="notificaciones">Notificación</button>
+              </div>
+              <section class="tab-panel" data-tab="autorización">
+                <div class="grid">
+                  <article class="panel">
+                    <div class="panel-header">
+                      <div><h3>Expediente de autorización</h3><p>Perfil del cliente, recepción enviada y autorización.</p></div>
+                      <div class="btn-row">
+                        <button class="btn primary" data-action="save-admin-all">Guardar</button>
+                        <details class="action-menu">
+                          <summary class="btn">Menú</summary>
+                          <div class="action-menu-list">
+                            <button class="btn" data-action="send-client">Enviar autorización por WhatsApp</button>
+                            <button class="btn" data-action="send-client-tracking">Enviar seguimiento por WhatsApp</button>
+                            <button class="btn" data-action="admin-manual-authorize">Autorizar manualmente</button>
+                            <button class="btn" data-action="admin-remove-authorization">Quitar autorización</button>
+                            <button class="btn" data-action="open-admin-authorization">Abrir autorización</button>
+                            <button class="btn" data-action="print-authorization">Imprimir autorización / PDF</button>
+                          </div>
+                        </details>
+                      </div>
+                    </div>
+                  </article>
+                  <article class="panel authorization-actions-panel">
+                    <div class="panel-header"><div><h3>Acciones de autorización</h3><p>Envíe el link al cliente o registre autorización directa desde administración.</p></div></div>
+                    <div class="panel-body">
+                      <div class="btn-row authorization-action-buttons">
+                        <button class="btn primary" data-action="send-client">Enviar autorización por WhatsApp</button>
+                        <button class="btn" data-action="send-client-tracking">Enviar seguimiento por WhatsApp</button>
+                        <button class="btn" data-action="admin-manual-authorize">Autorizar manualmente</button>
+                        <button class="btn" data-action="admin-remove-authorization">Quitar autorización</button>
+                        <button class="btn" data-action="open-admin-authorization">Abrir autorización</button>
+                        <button class="btn" data-action="print-authorization">Imprimir autorización / PDF</button>
+                      </div>
+                    </div>
+                  </article>
+                  <div data-admin-file-links></div>
+                  <div data-admin-authorization-view></div>
+                  <article class="panel">
+                    <div class="panel-header"><div><h3>Datos del cliente</h3><p>Estos datos los completa el administrador</p></div></div>
+                    <div class="panel-body form-grid">
+                      <div class="field"><label>Nombre del cliente</label><input name="adminClientName" data-admin-client-field="name"></div>
+                      <div class="field"><label>Teléfono</label><input name="adminClientPhone" data-admin-client-field="phone"></div>
+                    </div>
+                  </article>
+                  <article class="panel">
+                    <div class="panel-header"><div><h3>Autorización del cliente</h3><p>Primero revise lo llenado por el empleado antes de enviar el link</p></div></div>
+                    <div class="panel-body grid">
+                      <div class="notice">Aquí se muestra la recepción capturada por el empleado: datos del vehículo, fotos, inventario, observaciones y daños encontrados.</div>
+                    </div>
+                  </article>
+                  <div class="grid cols-2">
+                    <article class="panel">
+                      <div class="panel-header"><h3>Datos llenados por empleado</h3></div>
+                      <div class="panel-body" data-admin-file-vehicle></div>
+                    </article>
+                    <article class="panel">
+                      <div class="panel-header"><h3>Inventario</h3></div>
+                      <div class="panel-body check-grid" data-admin-file-inventory></div>
+                    </article>
+                  </div>
+                  <article class="panel">
+                    <div class="panel-header"><h3>Fotografías de recepción</h3></div>
+                    <div class="panel-body photo-grid" data-admin-file-photos></div>
+                  </article>
+                  <article class="panel">
+                    <div class="panel-header"><h3>Observaciones y daños</h3></div>
+                    <div class="panel-body grid" data-admin-file-damages></div>
+                  </article>
+                  <article class="panel">
+                    <div class="panel-header"><h3>Constancia de autorización</h3></div>
+                    <div class="panel-body grid" data-authorization-proof></div>
+                  </article>
+                </div>
+              </section>
+              <section class="tab-panel" data-tab="seguimiento">
+                <div class="grid">
+                  <article class="panel">
+                    <div class="panel-header"><div><h3>Seguimiento del cliente</h3><p>Datos internos para revisión antes de publicar</p></div><div class="btn-row"><button class="btn" data-action="save-admin-tracking">Guardar seguimiento</button><button class="btn primary" data-action="save-progress">Publicar seguimiento</button></div></div>
+                    <div class="panel-body form-grid">
+                      <div class="field full">
+                        <label>Link de seguimiento</label>
+                        <button type="button" class="admin-tracking-link" data-admin-tracking-link data-action="open-admin-tracking-link">seguimiento.html</button>
+                      </div>
+                      <div class="field"><label>Recepción</label><input data-track-field="receptionDate"></div>
+                      <div class="field"><label>Estimacion de entrega</label><input type="date" data-track-field="deliveryEstimate"></div>
+                      <div class="field"><label>Vehículo visible</label><input data-track-field="vehicleTitle"></div>
+                      <div class="field"><label>Odómetro visible</label><input data-track-field="odometer"></div>
+                      <div class="field"><label>Placa visible</label><input data-track-field="plate"></div>
+                      <div class="field"><label>Estado del vehículo</label><select data-track-field="state"><option>EN REVISIÓN</option><option>EN DIAGNÓSTICO</option><option>EN REPARACIÓN</option><option>ESPERA DE REPUESTOS</option><option>EN PAUSA</option><option>FINALIZADO</option><option>ENTREGADO</option></select></div>
+                      <div class="field hidden" data-final-delivery-time-field><label>Hora de entrega al cliente (12 horas)</label><div class="time12-row" data-final-delivery-time12><select data-time12-hour aria-label="Hora"><option value="">Hora</option><option value="1">01</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span>:</span><select data-time12-minute aria-label="Minutos"><option value="">Min</option><option value="00">00</option><option value="01">01</option><option value="02">02</option><option value="03">03</option><option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option><option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option><option value="32">32</option><option value="33">33</option><option value="34">34</option><option value="35">35</option><option value="36">36</option><option value="37">37</option><option value="38">38</option><option value="39">39</option><option value="40">40</option><option value="41">41</option><option value="42">42</option><option value="43">43</option><option value="44">44</option><option value="45">45</option><option value="46">46</option><option value="47">47</option><option value="48">48</option><option value="49">49</option><option value="50">50</option><option value="51">51</option><option value="52">52</option><option value="53">53</option><option value="54">54</option><option value="55">55</option><option value="56">56</option><option value="57">57</option><option value="58">58</option><option value="59">59</option></select><select data-time12-period aria-label="AM o PM"><option value="AM">AM</option><option value="PM">PM</option></select></div><input type="hidden" data-final-delivery-time><small>Se publicará junto con la estimación de entrega.</small></div>
+                      <div class="field full"><label>Tiempo límite para empleado</label><div class="deadline-12h-grid"><div><small>Fecha límite</small><input type="date" data-admin-deadline-date></div><div><small>Hora límite (12 horas)</small><div class="time12-row" data-admin-deadline-time12><select data-time12-hour aria-label="Hora"><option value="">Hora</option><option value="1">01</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select><span>:</span><select data-time12-minute aria-label="Minutos"><option value="">Min</option><option value="00">00</option><option value="01">01</option><option value="02">02</option><option value="03">03</option><option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option><option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option><option value="32">32</option><option value="33">33</option><option value="34">34</option><option value="35">35</option><option value="36">36</option><option value="37">37</option><option value="38">38</option><option value="39">39</option><option value="40">40</option><option value="41">41</option><option value="42">42</option><option value="43">43</option><option value="44">44</option><option value="45">45</option><option value="46">46</option><option value="47">47</option><option value="48">48</option><option value="49">49</option><option value="50">50</option><option value="51">51</option><option value="52">52</option><option value="53">53</option><option value="54">54</option><option value="55">55</option><option value="56">56</option><option value="57">57</option><option value="58">58</option><option value="59">59</option></select><select data-time12-period aria-label="AM o PM"><option value="AM">AM</option><option value="PM">PM</option></select></div></div></div><input type="hidden" data-admin-deadline></div>
+                      <div class="field"><label>Estado del tiempo</label><input readonly data-admin-deadline-status value="Esperando cálculo de sistema"></div>
+                      <div class="field"><label>Avance %</label><input type="range" min="0" max="100" data-admin-progress><strong data-progress-value>0%</strong></div>
+                      <div class="field full"><label>Detalles del proceso actual por renglones</label><div class="detail-list" data-admin-detail-rows></div></div>
+                      <div class="field full"><label>Nuevo renglón</label><textarea data-admin-new-detail placeholder="Escriba un avance nuevo para el cliente"></textarea><div class="desktop-dictation-row tracking-detail-action-row"><button type="button" class="btn dictation-btn" data-action="start-dictation" data-dictation-target="[data-admin-new-detail]">Dictar</button><button type="button" class="btn" data-action="admin-add-detail-row">Agregar renglón</button></div></div>
+                    </div>
+                  </article>
+                </div>
+              </section>
+              <section class="tab-panel" data-tab="facturas">
+                <article class="panel">
+                  <div class="panel-header">
+                    <div><h3>Facturas</h3><p>Fotografías de facturas asociadas a este expediente.</p></div>
+                    <div class="btn-row">
+                      <label class="btn">Agregar factura<input class="hidden" type="file" accept="image/*" capture="environment" data-admin-invoice-upload></label>
+                    </div>
+                  </div>
+                  <div class="panel-body photo-grid" data-admin-invoices></div>
+                </article>
+              </section>
+              <section class="tab-panel" data-tab="notificaciones">
+                <article class="panel">
+                  <div class="panel-header">
+                    <div><h3>Notificaciones del vehículo</h3><p>Mensajes para el empleado asociados únicamente a este expediente.</p></div>
+                  </div>
+                  <div class="panel-body form-grid">
+                    <div class="field"><label>Prioridad</label><select data-admin-vehicle-notification-priority><option value="warn">Amarillo / advertencia</option><option value="danger">Rojo / urgente</option></select></div>
+                    <div class="field full"><label>Mensaje</label><textarea data-admin-vehicle-notification-text placeholder="Escriba una notificación para este vehículo"></textarea><div class="desktop-dictation-row"><button type="button" class="btn dictation-btn" data-action="start-dictation" data-dictation-target="[data-admin-vehicle-notification-text]">Dictar</button></div></div>
+                    <div class="field full"><button type="button" class="btn primary" data-action="send-vehicle-notification">Enviar notificación del vehículo</button></div>
+                  </div>
+                </article>
+                <article class="panel">
+                  <div class="panel-header"><div><h3>Mensajes enviados</h3><p>El empleado verá estos mensajes en la pestaña Notificaciones del carro.</p></div></div>
+                  <div class="panel-body grid" data-admin-vehicle-notifications></div>
+                </article>
+              </section>
+            </div>
+          </article>
+        </section>
+      </div>
+    </main>
+  </div>
+<script src="assets/js/auth-guard.js?v=v4-stage4-16-github-ready"></script>
+<script src="assets/js/data-v4.js?v=v4-stage4-16-github-ready"></script>
+<script src="assets/js/cloud-sync.js?v=v4-stage4-16-github-ready"></script>
+  <script src="assets/js/store.js?v=v4-stage4-16-github-ready"></script>
+  <script src="assets/js/app.js?v=v4-stage4-16-github-ready"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

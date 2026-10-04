@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#061226"/>
+      <stop offset=".42" stop-color="#0a2b5a"/>
+      <stop offset=".72" stop-color="#082044"/>
+      <stop offset="1" stop-color="#020813"/>
+    </linearGradient>
+    <radialGradient id="blueGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#7cc7ff" stop-opacity=".92"/>
+      <stop offset=".18" stop-color="#3299ff" stop-opacity=".42"/>
+      <stop offset=".62" stop-color="#0f5aaa" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#072046" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" fill="none" stroke="#7abaff" stroke-opacity=".11" stroke-width="1"/>
+    </pattern>
+    <symbol id="gearA" viewBox="0 0 400 400">
+      <path fill="#247bd6" fill-opacity=".42" fill-rule="evenodd" d="M200 18 224 61 273 47 280 97 329 108 308 154 347 190 308 226 329 273 280 284 273 333 224 319 200 362 176 319 127 333 120 284 71 273 92 226 53 190 92 154 71 108 120 97 127 47 176 61ZM200 94a106 106 0 1 0 0 212 106 106 0 0 0 0-212Zm0 43a63 63 0 1 0 0 126 63 63 0 0 0 0-126Zm0 31a32 32 0 1 0 0 64 32 32 0 0 0 0-64Z"/>
+      <circle cx="200" cy="200" r="138" fill="none" stroke="#9ad7ff" stroke-opacity=".34" stroke-width="4"/>
+      <circle cx="200" cy="200" r="86" fill="none" stroke="#9ad7ff" stroke-opacity=".28" stroke-width="3"/>
+      <circle cx="200" cy="200" r="43" fill="none" stroke="#bde7ff" stroke-opacity=".26" stroke-width="2"/>
+    </symbol>
+    <symbol id="gearB" viewBox="0 0 300 300">
+      <path fill="#1d6fca" fill-opacity=".36" fill-rule="evenodd" d="M150 18 169 50 206 41 212 78 249 88 233 122 263 150 233 178 249 212 212 222 206 259 169 250 150 282 131 250 94 259 88 222 51 212 67 178 37 150 67 122 51 88 88 78 94 41 131 50ZM150 76a74 74 0 1 0 0 148 74 74 0 0 0 0-148Zm0 36a38 38 0 1 0 0 76 38 38 0 0 0 0-76Z"/>
+      <circle cx="150" cy="150" r="96" fill="none" stroke="#8fd1ff" stroke-opacity=".28" stroke-width="3"/>
+    </symbol>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#base)"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+
+  <g opacity=".34" fill="none" stroke="#65b9ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M0 215h170l54-58h168l64 64h235l58-58h196l86 86h298l72-70h199"/>
+    <path d="M0 356h260l42-42h206l78 78h276l52-52h156l56 56h474"/>
+    <path d="M0 548h176l62-62h160l72 72h205l44-44h213l68 68h600"/>
+    <path d="M110 738h330l70-70h224l76 76h264l56-56h270l54 54h146"/>
+    <path d="M720 84v126h88M830 238v95h120M1198 95v150h142M1010 616v116h190"/>
+  </g>
+
+  <g opacity=".26" fill="none" stroke="#82caff" stroke-width="2">
+    <path d="M716 118h132l66 114-66 114H716l-66-114Z"/>
+    <path d="M1110 170h138l69 119-69 119h-138l-69-119Z"/>
+    <path d="M122 494h144l72 125-72 125H122L50 619Z"/>
+    <path d="M1288 520h154l77 133-77 133h-154l-77-133Z"/>
+    <path d="M905 420h92l46 80-46 80h-92l-46-80Z"/>
+  </g>
+
+  <g filter="url(#glow)">
+    <circle cx="338" cy="322" r="150" fill="url(#blueGlow)" opacity=".72"/>
+    <circle cx="1190" cy="455" r="170" fill="url(#blueGlow)" opacity=".65"/>
+    <circle cx="695" cy="680" r="112" fill="url(#blueGlow)" opacity=".36"/>
+    <circle cx="790" cy="250" r="76" fill="url(#blueGlow)" opacity=".24"/>
+  </g>
+
+  <g>
+    <use href="#gearA" x="85" y="72" width="410" height="410" opacity=".88"/>
+    <use href="#gearB" x="-52" y="-58" width="245" height="245" opacity=".52"/>
+    <use href="#gearB" x="330" y="35" width="170" height="170" opacity=".55"/>
+    <use href="#gearA" x="1042" y="258" width="430" height="430" opacity=".9"/>
+    <use href="#gearB" x="918" y="498" width="220" height="220" opacity=".56"/>
+    <use href="#gearB" x="656" y="126" width="190" height="190" opacity=".44"/>
+    <use href="#gearB" x="1258" y="84" width="180" height="180" opacity=".36"/>
+  </g>
+
+  <g fill="none" stroke="#9fdbff" stroke-opacity=".28" stroke-width="2">
+    <circle cx="345" cy="322" r="205"/>
+    <circle cx="1195" cy="455" r="220"/>
+    <circle cx="1195" cy="455" r="132"/>
+    <path d="M260 318a84 84 0 0 1 168-2M1112 455a86 86 0 0 1 172 0"/>
+  </g>
+
+  <g fill="#a5e0ff" opacity=".88" filter="url(#glow)">
+    <circle cx="672" cy="222" r="4"/>
+    <circle cx="1006" cy="394" r="5"/>
+    <circle cx="1338" cy="190" r="4"/>
+    <circle cx="514" cy="636" r="5"/>
+    <circle cx="902" cy="300" r="4"/>
+    <circle cx="1232" cy="566" r="5"/>
+  </g>
+
+  <g font-family="Consolas, 'Courier New', monospace" fill="#bfe7ff" opacity=".34">
+    <text x="548" y="142" font-size="24">T = F · r</text>
+    <text x="928" y="155" font-size="20">ω = 2πn / 60</text>
+    <text x="468" y="485" font-size="22">P = τ · ω</text>
+    <text x="980" y="705" font-size="20">η = Pout / Pin</text>
+    <text x="188" y="795" font-size="18">F = m · a</text>
+    <text x="1222" y="362" font-size="18">Δx = v₀t + ½at²</text>
+  </g>
+
+  <rect width="1600" height="900" fill="#010611" opacity=".28"/>
+</svg>

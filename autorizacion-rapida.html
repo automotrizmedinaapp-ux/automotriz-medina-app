@@ -1,0 +1,1173 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="manifest-autorizacion.webmanifest?v=v4-stage4-16-github-ready">
+  <meta name="theme-color" content="#0b233f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="AM Autorizacion">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="automotriz-medina-logo.png">
+  <title>Autorización - Automotriz Medina</title>
+  <link rel="stylesheet" href="assets/css/styles.css?v=v4-stage4-16-github-ready">
+  <script defer src="pwa-register.js?v=v4-stage4-16-github-ready"></script>
+  <style>
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 18% 12%, rgba(32,111,120,.16), transparent 32%), linear-gradient(135deg, #eef4f6, #f8fafc);
+    }
+    .auth-page { min-height: 100vh; display: grid; place-items: center; padding: 18px; }
+    .auth-card { width: min(820px, 100%); overflow: hidden; }
+    .auth-hero {
+      display: grid;
+      justify-items: center;
+      text-align: center;
+      padding: 24px 20px 18px;
+      background: linear-gradient(180deg, #fff, #f6fafb);
+      border-bottom: 1px solid var(--line);
+    }
+    .auth-logo { width: min(240px, 72vw); height: auto; filter: drop-shadow(0 12px 20px rgba(23,32,42,.12)); }
+    .auth-hero h1 { margin: 12px 0 0; font-size: clamp(26px, 5vw, 36px); letter-spacing: 0; }
+    .auth-form { padding: 20px; display: grid; gap: 18px; }
+    .auth-step { display: grid; gap: 18px; }
+    .auth-mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .auth-mode-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 18px;
+      text-align: left;
+      display: grid;
+      gap: 8px;
+      min-height: 150px;
+      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .auth-mode-card:hover { transform: translateY(-2px); border-color: var(--teal); box-shadow: 0 12px 26px rgba(23, 32, 42, .12); }
+    .auth-mode-card strong { font-size: 20px; color: var(--ink); }
+    .auth-mode-card span { color: var(--muted); line-height: 1.45; }
+    .existing-vehicle-list { display: grid; gap: 10px; }
+    .existing-vehicle-option {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 14px;
+      text-align: left;
+      cursor: pointer;
+      display: grid;
+      gap: 4px;
+      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    .existing-vehicle-option:hover { border-color: var(--teal); background: #f6fbfc; box-shadow: 0 8px 18px rgba(32,111,120,.12); }
+    .existing-vehicle-option strong { color: var(--ink); }
+    .existing-vehicle-option span { color: var(--muted); font-size: 14px; }
+    .empty-existing { padding: 16px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); background: #f8fafc; }
+    .signature-box { border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; }
+    .signature-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+    }
+    .signature-toolbar strong { font-size: 14px; }
+    #signaturePad {
+      width: 100%;
+      height: min(48vh, 360px);
+      min-height: 260px;
+      display: block;
+      touch-action: none;
+      background: linear-gradient(180deg, #fff, #fbfdfe);
+      cursor: crosshair;
+    }
+    .signature-hint { padding: 10px 12px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
+    .success-card { display: grid; gap: 12px; place-items: center; text-align: center; min-height: 220px; }
+    .success-card .notice { background: #eef8f2; border-left-color: var(--ok); }
+    .saving-state { display: grid; justify-items: center; gap: 14px; }
+    .saving-state strong { font-size: 20px; }
+    .saving-state > span { color: var(--muted); }
+    .signature-saving-symbol{position:relative;width:100px;height:100px;margin:0 auto 4px}
+    .signature-saving-ring{position:absolute;inset:0;border-radius:50%;border:4px solid rgba(32,111,120,.15);border-top-color:#206f78;animation:signatureSavingSpin .9s linear infinite}
+    .signature-saving-turn{position:absolute;left:10px;right:10px;top:18px;display:grid;place-items:center;color:#173a43;line-height:1}.signature-saving-turn b{font-size:22px}.signature-saving-turn b.pulse{animation:signatureSavingPulse .28s ease}
+    .signature-saving-speed{position:absolute;left:8px;right:8px;bottom:18px;display:grid;place-items:center;color:#173a43;font-weight:800;font-size:13px;line-height:1}.signature-saving-speed small{font-size:8px;letter-spacing:.12em;color:#64828a;text-transform:uppercase;margin-top:3px}
+    .signature-saving-check{position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;background:#16a34a;color:#fff;font-size:42px;font-weight:900;animation:signatureCheckIn .35s ease}
+    .saving-state.offline .signature-saving-ring{animation-play-state:paused;border-top-color:#f4b942}
+    .saving-state.offline .signature-saving-speed{color:#8a6400}
+    @keyframes signatureSavingSpin{to{transform:rotate(360deg)}}
+    @keyframes signatureSavingPulse{0%{transform:scale(.72);opacity:.45}60%{transform:scale(1.18);opacity:1}100%{transform:scale(1);opacity:1}}
+    @keyframes signatureCheckIn{0%{opacity:0;transform:scale(.55)}70%{opacity:1;transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+    @media (max-width: 760px) {
+      .auth-page { padding: 8px; place-items: start center; }
+      .auth-form { padding: 14px; }
+      .auth-mode-grid { grid-template-columns: 1fr; }
+      #signaturePad { height: 52vh; min-height: 340px; }
+      .signature-toolbar { align-items: stretch; flex-direction: column; }
+    }
+  </style>
+</head>
+<body data-page="signature" lang="es" spellcheck="true">
+  <main class="auth-page">
+    <article class="panel auth-card">
+      <div class="auth-hero">
+        <img class="auth-logo" src="automotriz-medina-logo.png" alt="Automotriz Medina">
+        <h1>Autorización</h1>
+      </div>
+
+      <form class="auth-form" id="quickAuthForm">
+        <section class="auth-step" data-auth-step="mode">
+          <div class="auth-mode-grid">
+            <button class="auth-mode-card" type="button" id="startNewProfile">
+              <strong>Crear nuevo perfil</strong>
+              <span>Registrar el vehículo desde cero y capturar la firma del cliente.</span>
+            </button>
+            <button class="auth-mode-card" type="button" id="startExistingProfile">
+              <strong>Firmar perfil existente</strong>
+              <span>Buscar un vehículo ya creado y capturar solamente la firma faltante.</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="auth-step hidden" data-auth-step="existing">
+          <div class="form-grid">
+            <div class="field">
+              <label>Técnico asignado</label>
+              <select id="existingEmployeeId">
+                <option value="">Seleccione técnico</option>
+                <option value="edwin">EDWIN</option>
+                <option value="rafael">RAFAEL</option>
+                <option value="cristian">CRISTIAN</option>
+              </select>
+            </div>
+          </div>
+          <div class="existing-vehicle-list" id="existingVehicleList">
+            <div class="empty-existing">Seleccione un técnico para ver vehículos pendientes de firma.</div>
+          </div>
+          <div class="btn-row">
+            <button class="btn" type="button" id="backFromExisting">Atrás</button>
+          </div>
+        </section>
+
+        <section class="auth-step hidden" data-auth-step="vehicle">
+          <div class="form-grid">
+            <div class="field">
+              <label>Técnico asignado</label>
+              <select name="employeeId" required>
+                <option value="">Seleccione técnico</option>
+                <option value="edwin">EDWIN</option>
+                <option value="rafael">RAFAEL</option>
+                <option value="cristian">CRISTIAN</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Hora</label>
+              <input name="time" type="time" required>
+            </div>
+            <div class="field">
+              <label>Marca</label>
+              <input name="marca" required>
+            </div>
+            <div class="field">
+              <label>Modelo</label>
+              <input name="modelo" required>
+            </div>
+            <div class="field">
+              <label>Año</label>
+              <select name="anio" required>
+                <option value="">Seleccione año</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label>Falla reportada</label>
+              <textarea name="fallaReportada" required placeholder="Describa la falla que reporta el cliente"></textarea>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn" type="reset">Limpiar formulario</button>
+            <button class="btn primary" type="button" id="nextStep">Siguiente</button>
+          </div>
+        </section>
+
+        <section class="auth-step hidden" data-auth-step="client">
+          <div class="form-grid">
+            <div class="field">
+              <label>Nombre del cliente</label>
+              <input name="clientName" autocomplete="name" required>
+            </div>
+            <div class="field">
+              <label>Número de teléfono</label>
+              <input name="phone" inputmode="numeric" autocomplete="tel" pattern="[0-9]*" required>
+            </div>
+          </div>
+
+          <div class="terms-box" tabindex="0">
+            <h3>Contrato de servicio</h3>
+            <p>El cliente autoriza a Automotriz Medina a recibir el vehículo identificado en esta recepción y a realizar las revisiones, pruebas, diagnósticos, desmontajes y verificaciones necesarias para determinar el estado del vehículo, la falla reportada y el trabajo requerido.</p>
+            <p>El cliente o persona responsable del vehículo acepta que todo diagnóstico, revisión, prueba, desmontaje, verificación, mano de obra, reparación, repuesto o servicio previamente autorizado y efectivamente realizado deberá ser cancelado en su totalidad. Si después del diagnóstico el cliente decide no continuar con la reparación, igualmente deberá cancelar el costo correspondiente al diagnóstico, revisión, pruebas o procedimientos realizados hasta ese momento. Dicho costo podrá determinarse al finalizar el proceso de revisión o diagnóstico, según el tiempo, pruebas y procedimientos necesarios, y será informado y detallado al cliente.</p>
+            <p>Cuando el cliente autorice una reparación, acepta pagar el costo total de los trabajos realizados, repuestos utilizados, mano de obra y cualquier cargo relacionado que haya sido previamente informado y autorizado. Automotriz Medina proporcionará el detalle de los conceptos cobrados. El vehículo podrá ser retenido únicamente en los casos y condiciones permitidos por la legislación aplicable, mientras existan saldos vencidos correspondientes a trabajos, repuestos o servicios autorizados.</p>
+            <p>El cliente acepta que las reparaciones, repuestos, trabajos adicionales o intervenciones especiales que excedan el diagnóstico inicial o el motivo principal de ingreso deberán ser informados y autorizados previamente por el cliente o persona responsable. Los procedimientos necesarios para diagnosticar, verificar o confirmar la falla reportada podrán realizarse como parte del proceso de revisión autorizado. La falta de respuesta del cliente no se considerará una autorización.</p>
+            <p>Si el cliente decide retirar el vehículo y no continuar con el diagnóstico o reparación, deberá cancelar los trabajos autorizados y realizados hasta ese momento, el diagnóstico efectuado, los repuestos o servicios previamente autorizados y, cuando sea necesario para entregar el vehículo de forma segura, el desmontaje o rearmado previamente informado. No se cobrarán trabajos que no hayan sido realizados.</p>
+            <p>Si Automotriz Medina determina que no puede continuar con el diagnóstico o reparación por razones técnicas, de seguridad, falta de repuestos u otra causa justificada, se lo comunicará al cliente y coordinará la entrega del vehículo. En este caso, únicamente se cobrarán los trabajos y costos previamente autorizados que ya hayan sido realizados.</p>
+            <p>El cliente autoriza a Automotriz Medina y a su personal encargado a hacer uso del vehículo para realizar pruebas de funcionamiento, pruebas de manejo y pruebas de carretera cuando sean necesarias para el diagnóstico, verificación de fallas, confirmación de una reparación o validación del trabajo realizado. Estas pruebas se limitarán al tiempo y recorrido razonablemente necesarios.</p>
+            <p>El cliente acepta que las autorizaciones, confirmaciones, avisos y comunicaciones relacionadas con el servicio podrán realizarse por medios digitales, incluyendo este sistema, enlaces privados, mensajes de WhatsApp, correo electrónico u otros canales proporcionados por el cliente. Dichas confirmaciones quedarán registradas como constancia de la autorización o comunicación correspondiente.</p>
+            <p>El cliente comprende que durante una revisión pueden aparecer fallas preexistentes, intermitentes o no visibles al momento de la recepción, así como desgaste natural, manipulaciones anteriores o condiciones ocultas del vehículo. Automotriz Medina no será responsable por fallas o daños cuya causa sea anterior y ajena al trabajo realizado, sin perjuicio de la responsabilidad que legalmente corresponda por daños atribuibles a la intervención del taller.</p>
+            <p>La garantía de mano de obra aplica por 30 días continuos, cuando corresponda, contados desde la entrega del vehículo y siempre que la parte relacionada con el trabajo reclamado no haya sido intervenida posteriormente por terceros. La garantía cubre deficiencias directamente relacionadas con el trabajo realizado y no cubre fallas diferentes o preexistentes, desgaste normal ni daños causados por uso inadecuado.</p>
+            <p>Cuando el cliente proporcione repuestos, Automotriz Medina no podrá garantizar su calidad, procedencia, durabilidad, compatibilidad o funcionamiento, pero conservará la responsabilidad y garantía que corresponda sobre la instalación o mano de obra realizada. Esta garantía no limita los demás derechos reconocidos al consumidor por la legislación aplicable.</p>
+            <p>El cliente o persona responsable declara que, antes de entregar el vehículo a Automotriz Medina, tuvo la oportunidad de revisarlo y de informar cualquier daño, rayón, golpe, faltante, condición especial, objeto personal, accesorio, documento, herramienta o situación relevante.</p>
+            <p>Declara además haber retirado dinero, objetos de valor y pertenencias personales importantes antes de entregar el vehículo, y deberá informar cualquier objeto que permanezca en su interior. Al aceptar estos términos, reconoce que está enterado de las condiciones en que entrega el vehículo y que la información, observaciones y daños registrados reflejan la condición conocida al momento de la recepción.</p>
+            <p>Automotriz Medina no recibe en depósito objetos que no hayan sido declarados. Esta condición no excluye la responsabilidad que legalmente corresponda al taller cuando se compruebe dolo, culpa o negligencia de su personal.</p>
+            <p>El cliente acepta que el vehículo debe contar con combustible, batería y condiciones mínimas necesarias para realizar pruebas, diagnóstico o movilización interna. Si se requiere combustible, carga de batería, grúa u otro apoyo externo que genere un costo, Automotriz Medina solicitará previamente la autorización del cliente.</p>
+            <p>En una situación urgente destinada exclusivamente a evitar un daño inmediato al vehículo o a terceros, el taller podrá adoptar únicamente las medidas indispensables y deberá informar al cliente tan pronto como sea posible.</p>
+            <p>El cliente comprende que durante diagnósticos, desmontajes, revisiones o reparaciones pueden encontrarse componentes frágiles, deteriorados, resecos, quebradizos, corroídos, vencidos o previamente manipulados. Automotriz Medina informará los riesgos previsibles antes de intervenirlos y no será responsable por daños cuya causa sea exclusivamente preexistente o ajena a su actuación, manteniendo la responsabilidad que legalmente corresponda por el trabajo realizado.</p>
+            <p>Una vez notificado por un medio verificable que el vehículo está listo para retiro, el cliente tendrá 72 horas para retirarlo sin cargo adicional. Después de ese periodo podrá aplicarse un cargo diario de $5.00 USD por resguardo, parqueo, pernocta o custodia, siempre que dicho cargo haya sido informado y aceptado y que la demora no sea responsabilidad del taller.</p>
+            <p>Si el vehículo no es retirado ni reclamado durante 90 días continuos después de la notificación y no existe un acuerdo vigente con el cliente, Automotriz Medina podrá iniciar las gestiones legales correspondientes para resolver el resguardo del vehículo y recuperar los saldos pendientes por diagnóstico, reparación, repuestos, almacenaje u otros cargos previamente autorizados.</p>
+            <p>El transcurso de dicho plazo no transfiere automáticamente la propiedad del vehículo a Automotriz Medina ni autoriza su venta o disposición fuera del procedimiento permitido por la ley.</p>
+            <p>Al aceptar estos términos, el cliente autoriza proceder con el diagnóstico y/o reparación según la información acordada con el taller, autoriza el uso del vehículo para las pruebas necesarias y acepta las responsabilidades de pago, resguardo, comunicación digital y demás condiciones aquí descritas.</p>
+            <p>Cualquier trabajo o costo adicional requerirá autorización expresa del cliente. Para consultas o reclamos podrá comunicarse con Automotriz Medina al WhatsApp +503 7166-0867 o al correo oficinaautomotrizmedina@gmail.com.</p>
+          </div>
+
+          <div class="signature-box">
+            <div class="signature-toolbar">
+              <strong>Firma de autorización del cliente</strong>
+              <button class="btn" type="button" id="clearSignature">Limpiar firma</button>
+            </div>
+            <canvas id="signaturePad" aria-label="Área para firma del cliente"></canvas>
+            <div class="signature-hint">Firme en el área superior.</div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn" type="button" id="prevStep">Atrás</button>
+            <button class="btn primary" type="submit">Guardar autorización</button>
+          </div>
+        </section>
+      </form>
+
+      <div class="panel-body hidden success-card" id="successPanel"></div>
+    </article>
+  </main>
+
+<script src="assets/js/auth-guard.js?v=v4-stage4-16-github-ready"></script>
+<script src="assets/js/data-v4.js?v=v4-stage4-16-github-ready"></script>
+<script src="assets/js/cloud-sync.js?v=v4-stage4-16-github-ready"></script>
+  <script src="assets/js/store.js?v=v4-stage4-16-github-ready"></script>
+  <script>
+    // La autorización puede abrirse directamente. La sesión se resuelve al escoger el técnico.
+    const quickAuthSession = window.AM_CLOUD_SYNC?.session?.();
+    const EMPLOYEE_KEY = "am_employee_module_safe_v2";
+    const EMPLOYEE_SELECTED_KEY = "am_employee_selected_vehicle_v1";
+    const employees = { edwin: "EDWIN", rafael: "RAFAEL", cristian: "CRISTIAN" };
+    const photosReq = ["Frente", "Frente de tarjeta", "Reverso de tarjeta"];
+    const invBase = ["Herramientas", "Llanta de repuesto", "Mica", "Llave de ruedas", "Documentos", "Radio/Pantalla"];
+    const form = document.getElementById("quickAuthForm");
+    const successPanel = document.getElementById("successPanel");
+    const signaturePad = document.getElementById("signaturePad");
+    const ctx = signaturePad.getContext("2d");
+    const launchParams = new URLSearchParams(location.search || "");
+    const expressSignatureMode = launchParams.get("modo") === "express-firma";
+    const existingSignatureMode = launchParams.get("modo") === "firma-existente";
+    let existingProfileMode = false;
+    let selectedExistingVehicle = null;
+    let currentStep = "vehicle";
+    let isSigning = false;
+    let hasSignature = false;
+
+    function upper(value) { return String(value || "").toUpperCase(); }
+    function upperTrim(value) { return upper(value).trim(); }
+    function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch])); }
+    function token() {
+      const bytes = new Uint8Array(10);
+      if (crypto?.getRandomValues) {
+        crypto.getRandomValues(bytes);
+        return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+      }
+      return Math.random().toString(16).slice(2) + Date.now().toString(16);
+    }
+    function todayInput() { return new Date().toISOString().slice(0, 10); }
+    function currentTimeInput() { return new Date().toTimeString().slice(0, 5); }
+    function prettyDateTime(fecha, hora) {
+      const date = new Date(`${fecha}T${hora || "00:00"}`);
+      if (Number.isNaN(date.getTime())) return [fecha, hora].filter(Boolean).join(", ");
+      return date.toLocaleString("es-SV", { dateStyle: "short", timeStyle: "short" });
+    }
+    async function ensureSignatureSession(employeeId) {
+      employeeId = String(employeeId || "").toLowerCase();
+      if (!employees[employeeId]) throw new Error("Seleccione un técnico válido.");
+      if (window.AM_CLOUD_SYNC?.sessionMatches?.("employee", employeeId)) {
+        window.AM_CLOUD_SYNC.activateSession?.("employee", employeeId);
+        return true;
+      }
+      const adminSession = window.AM_CLOUD_SYNC?.session?.("admin");
+      if (adminSession) { window.AM_CLOUD_SYNC.activateSession?.("admin"); return true; }
+      const credential = window.prompt(`Ingrese la clave de ${employees[employeeId]}. Este dispositivo quedará autorizado.`);
+      if (!credential) return false;
+      await window.AM_CLOUD_SYNC.loginEmployee(employeeId, credential);
+      window.AM_CLOUD_SYNC.saveConfig?.({ enabled: true });
+      window.AM_CLOUD_SYNC.activateSession?.("employee", employeeId);
+      return true;
+    }
+    function loadEmployeeState() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(EMPLOYEE_KEY) || "null");
+        if (parsed && Array.isArray(parsed.vehicles)) return parsed;
+      } catch {}
+      return { selected: "", seq: 0, vehicles: [] };
+    }
+    function saveEmployeeState(state) {
+      // Solo persistencia local. El envío se hace una única vez y de forma dirigida al confirmar la firma.
+      localStorage.setItem(EMPLOYEE_KEY, JSON.stringify(state));
+    }
+    function hasStoredSignatureValue(value) {
+      return String(value || "").trim().length > 40;
+    }
+    function adminStateForSignature() {
+      try {
+        if (typeof AM_SIMPLE_STORE !== "undefined" && AM_SIMPLE_STORE?.load) {
+          return AM_SIMPLE_STORE.load();
+        }
+      } catch (error) {
+        console.warn("No se pudo leer el estado local para firmas.", error);
+      }
+      return {};
+    }
+    function deletedReceptionKeys(adminState = adminStateForSignature()) {
+      return new Set([...(Array.isArray(adminState.deletedReceptionNumbers) ? adminState.deletedReceptionNumbers : []), ...(Array.isArray(adminState.reservedReceptionNumbers) ? adminState.reservedReceptionNumbers : [])]
+        .map((item) => String(item || "").trim())
+        .filter(Boolean));
+    }
+    function recMatchesEmployee(rec, employeeId) {
+      const id = String(employeeId || "").toLowerCase();
+      if (!id) return true;
+      return String(rec?.employeeId || "").toLowerCase() === id ||
+        String(rec?.employeeName || "").toLowerCase() === id;
+    }
+    function recMatchesVehicle(rec, vehicle) {
+      const recNumber = String(rec?.number || "").trim();
+      const recId = String(rec?.id || "").trim();
+      const vehicleNumber = String(vehicle?.rec || "").trim();
+      const vehicleId = String(vehicle?.id || "").trim();
+      return !!(
+        (recNumber && vehicleNumber && recNumber === vehicleNumber) ||
+        (recId && vehicleId && (recId === vehicleId || recId === `emp-${vehicleId}`))
+      );
+    }
+    function recIsDashboardActive(rec, adminState = adminStateForSignature()) {
+      if (!rec) return false;
+      const deletedKeys = deletedReceptionKeys(adminState);
+      const recNumber = String(rec.number || "").trim();
+      const recId = String(rec.id || "").trim();
+      const status = upperTrim(rec.status || "");
+      if ((recNumber && deletedKeys.has(recNumber)) || (recId && deletedKeys.has(recId))) return false;
+      if (rec.deletedAt || rec.archivedAt || rec.deliveredAt) return false;
+      if (status === "ARCHIVADO" || status === "ELIMINADO" || status === "PAPELERA") return false;
+      if (status === "FINALIZADO" && rec.finalizationPublishedAt) return false;
+      if (status === "FINALIZADO" || status === "ENTREGADO") return false;
+      return true;
+    }
+    function vehicleHasSignature(vehicle) {
+      const adminState = adminStateForSignature();
+      const adminRec = (Array.isArray(adminState.receptions) ? adminState.receptions : [])
+        .find((rec) => recMatchesVehicle(rec, vehicle));
+      return !!(
+        hasStoredSignatureValue(vehicle?.signatureDataUrl) ||
+        hasStoredSignatureValue(vehicle?.authorizationEvidence?.signatureDataUrl) ||
+        hasStoredSignatureValue(adminRec?.signatureDataUrl) ||
+        hasStoredSignatureValue(adminRec?.authorizationEvidence?.signatureDataUrl)
+      );
+    }
+    function adminReceptionForVehicle(vehicle) {
+      const adminState = adminStateForSignature();
+      return (Array.isArray(adminState.receptions) ? adminState.receptions : [])
+        .find((rec) => recMatchesVehicle(rec, vehicle));
+    }
+    function vehicleIsInactive(vehicle) {
+      const adminRec = adminReceptionForVehicle(vehicle);
+      const adminState = adminStateForSignature();
+      const deletedKeys = deletedReceptionKeys(adminState);
+      const vehicleStatus = upper(vehicle?.estado || vehicle?.status || "");
+      const vehicleNumber = String(vehicle?.rec || "").trim();
+      const vehicleId = String(vehicle?.id || "").trim();
+      return !!(
+        (vehicleNumber && deletedKeys.has(vehicleNumber)) ||
+        (vehicleId && deletedKeys.has(vehicleId)) ||
+        vehicle?.deletedAt ||
+        vehicle?.archivedAt ||
+        vehicle?.deliveredAt ||
+        vehicleStatus === "FINALIZADO" ||
+        vehicleStatus === "ENTREGADO" ||
+        (adminRec && !recIsDashboardActive(adminRec, adminState))
+      );
+    }
+    function mergeVehicleWithReception(vehicle, rec, employeeId) {
+      return {
+        ...vehicle,
+        rec: vehicle.rec || rec?.number || "",
+        eid: vehicle.eid || rec?.employeeId || employeeId,
+        en: vehicle.en || rec?.employeeName || employees[employeeId] || "",
+        marca: vehicle.marca || rec?.vehicle?.marca || "",
+        modelo: vehicle.modelo || rec?.vehicle?.modelo || "",
+        anio: vehicle.anio || rec?.vehicle?.anio || "",
+        placa: vehicle.placa || rec?.vehicle?.placa || "",
+        estado: vehicle.estado || rec?.status || "",
+        clientName: vehicle.clientName || rec?.client?.name || "",
+        clientPhone: vehicle.clientPhone || rec?.client?.phone || "",
+        motivo: vehicle.motivo || rec?.serviceReason || rec?.serviceType || ""
+      };
+    }
+    function vehicleFromReception(rec, employeeId) {
+      return {
+        id: String(rec?.id || "").replace(/^emp-/, "") || String(rec?.number || "").replace(/\W+/g, "_") || token(),
+        rec: rec?.number || "",
+        eid: rec?.employeeId || employeeId,
+        en: rec?.employeeName || employees[employeeId] || "",
+        fecha: String(rec?.tracking?.receptionDate || "").split(",")[0] || todayInput(),
+        hora: currentTimeInput(),
+        marca: rec?.vehicle?.marca || "",
+        modelo: rec?.vehicle?.modelo || "",
+        anio: rec?.vehicle?.anio || "",
+        color: rec?.vehicle?.color || "",
+        placa: rec?.vehicle?.placa || "",
+        vin: rec?.vehicle?.vin || "",
+        odometro: rec?.vehicle?.kilometraje || "",
+        estado: rec?.status || "EN RECEPCIÓN",
+        clientName: rec?.client?.name || "",
+        clientPhone: rec?.client?.phone || "",
+        motivo: rec?.serviceReason || rec?.serviceType || rec?.observations || "",
+        express: !!rec?.express,
+        photos: Array.isArray(rec?.photos) ? rec.photos.map((photo) => ({ ...photo })) : [],
+        inventory: Array.isArray(rec?.inventory) ? rec.inventory.map((item) => ({ ...item })) : [],
+        damages: Array.isArray(rec?.damages) ? rec.damages.map((damage) => ({ ...damage })) : []
+      };
+    }
+    function existingVehicleTitle(vehicle) {
+      return [vehicle?.marca, vehicle?.modelo, vehicle?.anio].map((part) => String(part || "").trim()).filter(Boolean).join(" ") || "VEHÍCULO SIN DATOS";
+    }
+    function existingVehicleMeta(vehicle) {
+      return [vehicle?.rec, vehicle?.placa, vehicle?.motivo || vehicle?.serviceReason || vehicle?.tipoServicio].map((part) => String(part || "").trim()).filter(Boolean).join(" · ");
+    }
+    function pendingSignatureVehicles(employeeId) {
+      const state = loadEmployeeState();
+      const employeeVehicles = (Array.isArray(state.vehicles) ? state.vehicles : [])
+        .filter((vehicle) => String(vehicle.eid || "").toLowerCase() === employeeId);
+      const adminState = adminStateForSignature();
+      const activeReceptions = (Array.isArray(adminState.receptions) ? adminState.receptions : [])
+        .filter((rec) => recMatchesEmployee(rec, employeeId))
+        .filter((rec) => recIsDashboardActive(rec, adminState));
+      return activeReceptions
+        .map((rec) => {
+          const vehicle = employeeVehicles.find((item) => recMatchesVehicle(rec, item));
+          return mergeVehicleWithReception(vehicle || vehicleFromReception(rec, employeeId), rec, employeeId);
+        })
+        .filter((vehicle) => !vehicleIsInactive(vehicle))
+        .filter((vehicle) => !vehicleHasSignature(vehicle));
+    }
+    function renderExistingVehicleList() {
+      const employeeId = String(document.getElementById("existingEmployeeId").value || "");
+      const list = document.getElementById("existingVehicleList");
+      selectedExistingVehicle = null;
+      if (!employeeId) {
+        list.innerHTML = '<div class="empty-existing">Seleccione un técnico para ver vehículos pendientes de firma.</div>';
+        return;
+      }
+      const vehicles = pendingSignatureVehicles(employeeId);
+      if (!vehicles.length) {
+        list.innerHTML = '<div class="empty-existing">No hay vehículos pendientes de firma para este técnico.</div>';
+        return;
+      }
+      list.innerHTML = vehicles.map((vehicle) => `
+        <button class="existing-vehicle-option" type="button" data-existing-vehicle="${esc(vehicle.id || "")}">
+          <strong>${esc(existingVehicleTitle(vehicle))}</strong>
+          <span>${esc(existingVehicleMeta(vehicle) || "Perfil creado sin firma")}</span>
+        </button>
+      `).join("");
+    }
+    function beginExistingSignature(vehicleId) {
+      const employeeId = String(document.getElementById("existingEmployeeId").value || "");
+      const vehicle = pendingSignatureVehicles(employeeId).find((item) => item.id === vehicleId);
+      if (!vehicle) {
+        alert("No se encontró el vehículo seleccionado o ya tiene firma guardada.");
+        renderExistingVehicleList();
+        return;
+      }
+      existingProfileMode = true;
+      selectedExistingVehicle = vehicle;
+      form.elements.employeeId.value = employeeId;
+      form.elements.time.value = vehicle.hora || currentTimeInput();
+      form.elements.marca.value = upper(vehicle.marca || "");
+      form.elements.modelo.value = upper(vehicle.modelo || "");
+      form.elements.anio.value = vehicle.anio || "";
+      form.elements.fallaReportada.value = upper(vehicle.motivo || vehicle.serviceReason || vehicle.tipoServicio || "");
+      form.elements.clientName.value = upper(vehicle.clientName || "");
+      form.elements.phone.value = String(vehicle.clientPhone || "").replace(/\D+/g, "");
+      document.getElementById("prevStep").classList.add("hidden");
+      showStep("client");
+    }
+    function updateExistingExpressAuthorization(data) {
+      const employeeState = loadEmployeeState();
+      const vehicles = Array.isArray(employeeState.vehicles) ? employeeState.vehicles : [];
+      const index = vehicles.findIndex((vehicle) => vehicle.id === data.employeeVehicleId || vehicle.rec === data.number);
+      if (index < 0) throw new Error("No se encontró el servicio express original para guardar la firma.");
+      const current = vehicles[index];
+      vehicles[index] = {
+        ...current,
+        eid: data.employeeId || current.eid,
+        en: data.employeeName || current.en,
+        hora: data.hora || current.hora,
+        marca: data.marca || current.marca,
+        modelo: data.modelo || current.modelo,
+        anio: data.anio || current.anio,
+        autorizado: true,
+        signed: true,
+        manualAuthorization: true,
+        quickAuthorization: true,
+        clientName: data.clientName,
+        clientPhone: data.phone,
+        motivo: data.fallaReportada || current.motivo,
+        serviceReason: data.fallaReportada || current.serviceReason || current.motivo,
+        termsAcceptedAt: data.signatureDate,
+        signatureName: data.clientName,
+        signatureDate: data.signatureDate,
+        signatureDataUrl: data.signatureDataUrl,
+        authorizationEvidence: {
+          acceptedAtIso: new Date().toISOString(),
+          authorizationType: "Firma presencial en servicio express",
+          registeredBy: data.employeeName,
+          reason: "Cliente firmó autorización presencial para servicio express.",
+          userAgent: navigator.userAgent || "",
+          platform: navigator.platform || "",
+          language: navigator.language || "",
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+          screen: `${screen.width}x${screen.height}`,
+          viewport: `${innerWidth}x${innerHeight}`
+        }
+      };
+      employeeState.vehicles = vehicles;
+      employeeState.selected = data.employeeVehicleId;
+      saveEmployeeState(employeeState);
+      try { sessionStorage.setItem(EMPLOYEE_SELECTED_KEY, data.employeeVehicleId); } catch {}
+
+      AM_SIMPLE_STORE.mutate((adminState) => {
+        if (!Array.isArray(adminState.receptions)) adminState.receptions = [];
+        let rec = adminState.receptions.find((item) => item.number === data.number || item.id === `emp-${data.employeeVehicleId}`);
+        if (!rec) {
+          rec = makeAdminReception(data);
+          rec.id = `emp-${data.employeeVehicleId}`;
+          rec.number = data.number;
+          rec.express = true;
+          rec.status = "SERVICIO EXPRESS";
+          rec.serviceType = data.fallaReportada || "SERVICIO EXPRESS";
+          adminState.receptions.unshift(rec);
+        }
+        rec.express = true;
+        rec.status = rec.status || "SERVICIO EXPRESS";
+        rec.signed = true;
+        rec.sentToClient = true;
+        rec.manualAuthorization = true;
+        rec.quickAuthorization = true;
+        rec.signatureName = data.clientName;
+        rec.signatureDate = data.signatureDate;
+        rec.signatureDataUrl = data.signatureDataUrl;
+        rec.termsAcceptedAt = data.signatureDate;
+        rec.client = { ...(rec.client || {}), name: data.clientName, phone: data.phone };
+        rec.employeeId = data.employeeId;
+        rec.employeeName = data.employeeName;
+        rec.serviceReason = data.fallaReportada || rec.serviceReason || "SERVICIO EXPRESS";
+        rec.vehicle = { ...(rec.vehicle || {}), marca: data.marca, modelo: data.modelo, anio: data.anio };
+        rec.observations = `Cliente autorizó servicio express con firma. Técnico asignado: ${data.employeeName}. Falla reportada: ${data.fallaReportada || "No indicada"}.`;
+        rec.authorizationEvidence = {
+          acceptedAtIso: new Date().toISOString(),
+          authorizationType: "Firma presencial en servicio express",
+          registeredBy: data.employeeName,
+          reason: "Cliente firmó autorización presencial para servicio express.",
+          userAgent: navigator.userAgent || "",
+          platform: navigator.platform || "",
+          language: navigator.language || "",
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+          screen: `${screen.width}x${screen.height}`,
+          viewport: `${innerWidth}x${innerHeight}`
+        };
+        adminState.selectedId = rec.id;
+      });
+    }
+    function updateExistingProfileAuthorization(data) {
+      const employeeState = loadEmployeeState();
+      const vehicles = Array.isArray(employeeState.vehicles) ? employeeState.vehicles : [];
+      let index = vehicles.findIndex((vehicle) => vehicle.id === data.employeeVehicleId || vehicle.rec === data.number);
+      if (index < 0) {
+        vehicles.unshift({
+          ...(selectedExistingVehicle || {}),
+          id: data.employeeVehicleId,
+          rec: data.number,
+          eid: data.employeeId,
+          en: data.employeeName
+        });
+        index = 0;
+      }
+      const current = vehicles[index];
+      const evidence = {
+        acceptedAtIso: new Date().toISOString(),
+        authorizationType: "Firma presencial en perfil existente",
+        registeredBy: data.employeeName,
+        reason: "Cliente firmó autorización presencial para expediente existente.",
+        userAgent: navigator.userAgent || "",
+        platform: navigator.platform || "",
+        language: navigator.language || "",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+        screen: `${screen.width}x${screen.height}`,
+        viewport: `${innerWidth}x${innerHeight}`
+      };
+      vehicles[index] = {
+        ...current,
+        eid: data.employeeId || current.eid,
+        en: data.employeeName || current.en,
+        hora: data.hora || current.hora,
+        marca: data.marca || current.marca,
+        modelo: data.modelo || current.modelo,
+        anio: data.anio || current.anio,
+        autorizado: true,
+        signed: true,
+        manualAuthorization: true,
+        quickAuthorization: true,
+        clientName: data.clientName,
+        clientPhone: data.phone,
+        motivo: data.fallaReportada || current.motivo,
+        serviceReason: data.fallaReportada || current.serviceReason || current.motivo,
+        termsAcceptedAt: data.signatureDate,
+        signatureName: data.clientName,
+        signatureDate: data.signatureDate,
+        signatureDataUrl: data.signatureDataUrl,
+        authorizationEvidence: evidence
+      };
+      employeeState.vehicles = vehicles;
+      employeeState.selected = data.employeeVehicleId;
+      saveEmployeeState(employeeState);
+      try { sessionStorage.setItem(EMPLOYEE_SELECTED_KEY, data.employeeVehicleId); } catch {}
+
+      AM_SIMPLE_STORE.mutate((adminState) => {
+        if (!Array.isArray(adminState.receptions)) adminState.receptions = [];
+        let rec = adminState.receptions.find((item) => item.number === data.number || item.id === `emp-${data.employeeVehicleId}`);
+        if (!rec) {
+          rec = makeAdminReception(data);
+          rec.id = `emp-${data.employeeVehicleId}`;
+          rec.number = data.number;
+          rec.express = !!current.express;
+          rec.status = current.estado || current.status || (current.express ? "SERVICIO EXPRESS" : "EN RECEPCIÓN");
+          adminState.receptions.unshift(rec);
+        }
+        rec.express = !!current.express;
+        rec.status = rec.status || current.estado || (current.express ? "SERVICIO EXPRESS" : "EN RECEPCIÓN");
+        rec.signed = true;
+        rec.sentToClient = true;
+        rec.manualAuthorization = true;
+        rec.quickAuthorization = true;
+        rec.signatureName = data.clientName;
+        rec.signatureDate = data.signatureDate;
+        rec.signatureDataUrl = data.signatureDataUrl;
+        rec.termsAcceptedAt = data.signatureDate;
+        rec.client = { ...(rec.client || {}), name: data.clientName, phone: data.phone };
+        rec.employeeId = data.employeeId;
+        rec.employeeName = data.employeeName;
+        rec.serviceReason = data.fallaReportada || rec.serviceReason || current.motivo || "";
+        rec.vehicle = { ...(rec.vehicle || {}), marca: data.marca, modelo: data.modelo, anio: data.anio };
+        rec.authorizationEvidence = evidence;
+        adminState.selectedId = rec.id;
+      });
+    }
+    function showStep(step) {
+      currentStep = step;
+      document.querySelectorAll("[data-auth-step]").forEach((section) => section.classList.toggle("hidden", section.dataset.authStep !== step));
+      if (step === "client") requestAnimationFrame(resizeSignature);
+    }
+    function resizeSignature() {
+      const rect = signaturePad.getBoundingClientRect();
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      const data = hasSignature ? signaturePad.toDataURL("image/png") : "";
+      signaturePad.width = Math.max(1, Math.round(rect.width * ratio));
+      signaturePad.height = Math.max(1, Math.round(rect.height * ratio));
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#17202a";
+      if (data) {
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        img.src = data;
+      }
+    }
+    function pointerPosition(event) {
+      const rect = signaturePad.getBoundingClientRect();
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    }
+    function startSignature(event) {
+      event.preventDefault();
+      isSigning = true;
+      hasSignature = true;
+      const pos = pointerPosition(event);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
+    function moveSignature(event) {
+      if (!isSigning) return;
+      event.preventDefault();
+      const pos = pointerPosition(event);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    }
+    function endSignature() { isSigning = false; }
+    function clearSignature() {
+      ctx.clearRect(0, 0, signaturePad.width, signaturePad.height);
+      hasSignature = false;
+    }
+    function nextReceptionNumber(adminState) {
+      if (!adminState.sequence) adminState.sequence = { reception: 0 };
+      const used=[...(adminState.receptions||[]).map(rec=>rec?.number),...(adminState.deletedReceptionNumbers||[]),...(adminState.reservedReceptionNumbers||[])];
+      let maxUsed=used.reduce((max,value)=>{const match=String(value||"").match(/(\d+)$/);return Math.max(max,match?Number(match[1]):0)},0);
+      maxUsed=Math.max(maxUsed,Number(adminState.sequence.reception||0),Math.max(0,Number(adminState.config?.nextReceptionNumber||1)-1));
+      adminState.sequence.reception=maxUsed+1;
+      return `AM-R-${String(adminState.sequence.reception).padStart(4, "0")}`;
+    }
+    function makeEmployeeVehicle(data) {
+      return {
+        id: data.employeeVehicleId,
+        rec: data.number,
+        eid: data.employeeId,
+        en: data.employeeName,
+        fecha: data.fecha,
+        hora: data.hora,
+        marca: data.marca,
+        modelo: data.modelo,
+        anio: data.anio,
+        color: "",
+        vin: "",
+        placa: "",
+        odometro: "",
+        unidad: "mi",
+        estado: "EN RECEPCIÓN",
+        avance: 0,
+        autorizado: true,
+        motivo: data.fallaReportada || "AUTORIZACIÓN EN RECEPCIÓN",
+        observaciones: `CLIENTE ${data.clientName} AUTORIZÓ RECEPCIÓN CON FIRMA. FALLA REPORTADA: ${data.fallaReportada || "NO INDICADA"}.`,
+        detalle: "",
+        detalles: [],
+        nota: "",
+        preliminar: true,
+        quickAuthorization: true,
+        termsAcceptedAt: data.signatureDate,
+        clientName: data.clientName,
+        clientPhone: data.phone,
+        signatureName: data.clientName,
+        signatureDate: data.signatureDate,
+        signatureDataUrl: data.signatureDataUrl,
+        photos: photosReq.map((label) => ({ label, dataUrl: "" })),
+        inventory: invBase.map((name, index) => ({ id: `${data.employeeVehicleId}-i${index}`, name, present: true, note: "" })),
+        damages: [],
+        deadline: "",
+        deadlineSetAt: "",
+        deadlineTokensAvailable: 3,
+        deadlineTokensUsed: 0,
+        deadlineUnlockRequested: false
+      };
+    }
+    function makeAdminReception(data) {
+      const clientToken = "cli_" + token();
+      const trackingToken = "trk_" + token();
+      return {
+        id: `emp-${data.employeeVehicleId}`,
+        number: data.number,
+        express: false,
+        serviceType: "",
+        status: "EN RECEPCIÓN",
+        sentToClient: false,
+        signed: true,
+        signatureName: data.clientName,
+        signatureDate: data.signatureDate,
+        signatureDataUrl: data.signatureDataUrl,
+        manualAuthorization: true,
+        quickAuthorization: true,
+        termsAcceptedAt: data.signatureDate,
+        clientToken,
+        trackingToken,
+        client: { name: data.clientName, phone: data.phone },
+        employeeId: data.employeeId,
+        employeeName: data.employeeName,
+        serviceReason: data.fallaReportada || "AUTORIZACIÓN EN RECEPCIÓN",
+        vehicle: { marca: data.marca, modelo: data.modelo, anio: data.anio, color: "", placa: "", vin: "", kilometraje: "" },
+        photos: photosReq.map((label, index) => ({ label, dataUrl: "", note: "", color: index % 2 === 0 ? "#206f78" : "#b52931" })),
+        inventory: invBase.map((name, index) => ({ id: `inv-${data.employeeVehicleId}-${index}`, name, present: true, note: "" })),
+        observations: `Cliente autorizó recepción con firma. Técnico asignado: ${data.employeeName}. Falla reportada: ${data.fallaReportada || "No indicada"}.`,
+        damages: [],
+        progress: 0,
+        progressLabel: "EN RECEPCIÓN",
+        tracking: {
+          receptionDate: prettyDateTime(data.fecha, data.hora),
+          deliveryEstimate: "",
+          odometer: "N/D",
+          plate: "N/D",
+          vehicleTitle: `${data.marca} ${data.modelo} ${data.anio}`.trim(),
+          state: "EN RECEPCIÓN",
+          processDetails: ""
+        },
+        internalWork: { internalNote: "", lockedReception: true },
+        authorizationEvidence: {
+          acceptedAtIso: new Date().toISOString(),
+          authorizationType: "Firma presencial en taller",
+          registeredBy: data.employeeName,
+          reason: "Cliente firmó autorización en recepción.",
+          userAgent: navigator.userAgent || "",
+          platform: navigator.platform || "",
+          language: navigator.language || "",
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+          screen: `${screen.width}x${screen.height}`,
+          viewport: `${innerWidth}x${innerHeight}`
+        },
+        updates: []
+      };
+    }
+    function saveAuthorization(data) {
+      if (expressSignatureMode) {
+        updateExistingExpressAuthorization(data);
+        return;
+      }
+      if (existingProfileMode) {
+        updateExistingProfileAuthorization(data);
+        return;
+      }
+      const employeeState = loadEmployeeState();
+      employeeState.seq = Math.max(Number(employeeState.seq || 0), (employeeState.vehicles || []).length) + 1;
+      employeeState.vehicles.unshift(makeEmployeeVehicle(data));
+      employeeState.selected = data.employeeVehicleId;
+      saveEmployeeState(employeeState);
+      try { sessionStorage.setItem(EMPLOYEE_SELECTED_KEY, data.employeeVehicleId); } catch {}
+
+      AM_SIMPLE_STORE.mutate((adminState) => {
+        if (!Array.isArray(adminState.receptions)) adminState.receptions = [];
+        if (!adminState.sequence) adminState.sequence = {};
+        const numberValue = Number(String(data.number || "").match(/(\d+)$/)?.[1] || 0);
+        adminState.sequence.reception = Math.max(Number(adminState.sequence.reception || 0), numberValue);
+        adminState.receptions.unshift(makeAdminReception(data));
+        adminState.selectedId = `emp-${data.employeeVehicleId}`;
+      });
+    }
+    let quickAuthInternalReset = false;
+    let quickAuthResetTimer = null;
+    let quickAuthPostSaveTimer = null;
+    function applyResetState() {
+      if (quickAuthPostSaveTimer) { clearTimeout(quickAuthPostSaveTimer); quickAuthPostSaveTimer = null; }
+      existingProfileMode = false; selectedExistingVehicle = null; isSigning = false;
+      form.elements.time.value = currentTimeInput();
+      clearSignature();
+      document.getElementById("prevStep").classList.remove("hidden");
+      document.getElementById("existingEmployeeId").value = "";
+      successPanel.classList.add("hidden");
+      successPanel.innerHTML = "";
+      form.classList.remove("hidden");
+      showStep("mode");
+      renderExistingVehicleList();
+      requestAnimationFrame(() => requestAnimationFrame(resizeSignature));
+    }
+    function resetForm() {
+      if (quickAuthResetTimer) { clearTimeout(quickAuthResetTimer); quickAuthResetTimer = null; }
+      quickAuthInternalReset = true;
+      try { form.reset(); } finally { quickAuthInternalReset = false; }
+      applyResetState();
+    }
+    let signatureSavingSpeedTimer = null;
+    let signatureSavingTurns = 0;
+    let signatureSavingKbps = 0;
+    let signatureStallUntil = 0;
+    let signatureStallValue = 0;
+    let signatureWillStall = false;
+    let signatureNextStallAt = 0;
+    function signatureOffline() { return typeof navigator !== "undefined" && navigator.onLine === false; }
+    function planSignatureVisual() { signatureSavingKbps = 900 + Math.random() * 9000; signatureStallUntil = 0; signatureStallValue = 0; signatureWillStall = Math.random() < .16; signatureNextStallAt = performance.now() + 1800 + Math.random() * 4200; }
+    function nextSignatureVisualKbps() {
+      const min = 100, max = 15000, now = performance.now();
+      if (signatureWillStall && !signatureStallUntil && now >= signatureNextStallAt) { const rare = [0,2,8,35,90,180,420]; signatureStallValue = rare[Math.floor(Math.random()*rare.length)]; signatureStallUntil = now + 700 + Math.random()*1500; signatureWillStall = false; signatureSavingKbps = signatureStallValue; }
+      if (signatureStallUntil && now < signatureStallUntil) return signatureStallValue;
+      if (signatureStallUntil && now >= signatureStallUntil) { signatureStallUntil = 0; signatureSavingKbps = 350 + Math.random()*1800; }
+      const current = signatureSavingKbps || (min + Math.random()*7000), drift = Math.max(250,current*.38), target = Math.min(max,Math.max(min,current+(Math.random()-.46)*drift));
+      signatureSavingKbps = Math.min(max,Math.max(min,current*.72+target*.28));
+      return Math.round(signatureSavingKbps/10)*10;
+    }
+    function signatureRingSeconds(value) { if (value<=2) return 6.8; if (value<100) return 4.8; if (value<500) return 3.4; if (value<1500) return 2.35; const n=Math.min(1,value/15000); return Math.max(.62,1.85-n*1.18); }
+    function stopSignatureSavingMotion() { clearInterval(signatureSavingSpeedTimer); signatureSavingSpeedTimer = null; }
+    function updateSignatureNetworkState() {
+      const state=successPanel.querySelector(".saving-state"), ring=successPanel.querySelector("[data-signature-saving-ring]"), speed=successPanel.querySelector("[data-signature-saving-speed]");
+      if (!state || !ring || !speed) return;
+      if (signatureOffline()) { state.classList.add("offline"); stopSignatureSavingMotion(); ring.style.animationPlayState="paused"; speed.textContent="0"; const strong=state.querySelector("strong"), span=state.querySelector("span:last-child"); if(strong)strong.textContent="Sin conexión a internet"; if(span)span.textContent="Verificá tu conexión para continuar."; }
+      else if (state.classList.contains("offline")) { state.classList.remove("offline"); ring.style.animationPlayState="running"; startSignatureSavingMotion(false); }
+    }
+    function startSignatureSavingMotion(reset = true) {
+      stopSignatureSavingMotion();
+      if (reset) { signatureSavingTurns=0; planSignatureVisual(); }
+      const ring=successPanel.querySelector("[data-signature-saving-ring]"), turn=successPanel.querySelector("[data-signature-saving-turn]"), speed=successPanel.querySelector("[data-signature-saving-speed]");
+      const refresh=()=>{ if(!speed||signatureOffline()){updateSignatureNetworkState();return;} const value=nextSignatureVisualKbps(); speed.textContent=value.toLocaleString("es-SV"); if(ring){ring.style.animationPlayState="running";ring.style.animationDuration=`${signatureRingSeconds(value).toFixed(2)}s`;} };
+      refresh(); signatureSavingSpeedTimer=setInterval(refresh,620);
+      if(ring&&!ring.dataset.turnCounterBound){ring.dataset.turnCounterBound="1";ring.addEventListener("animationiteration",()=>{if(signatureOffline())return;signatureSavingTurns+=1;if(!turn)return;turn.textContent=String(signatureSavingTurns);turn.classList.remove("pulse");void turn.offsetWidth;turn.classList.add("pulse");});}
+      updateSignatureNetworkState();
+    }
+    window.addEventListener("offline", updateSignatureNetworkState);
+    window.addEventListener("online", updateSignatureNetworkState);
+    function showSavingState(data) {
+      form.classList.add("hidden");
+      successPanel.classList.remove("hidden");
+      successPanel.innerHTML = `
+        <div class="saving-state">
+          <div class="signature-saving-symbol" aria-hidden="true"><span class="signature-saving-ring" data-signature-saving-ring></span><span class="signature-saving-turn"><b data-signature-saving-turn>0</b></span><span class="signature-saving-speed"><b data-signature-saving-speed>--</b><small>kbps</small></span></div>
+          <strong>Guardando autorización</strong>
+          <span>Registrando ${esc(data.number)} para ${esc(data.employeeName)}. Espere confirmación del servidor.</span>
+        </div>`;
+      startSignatureSavingMotion();
+    }
+    function showAuthorizationSuccess() {
+      stopSignatureSavingMotion();
+      successPanel.innerHTML = `
+        <div class="saving-state">
+          <div class="signature-saving-symbol" aria-hidden="true"><span class="signature-saving-check">✓</span></div>
+          <strong>Autorización guardada</strong>
+          <span>Firma confirmada por el servidor.</span>
+        </div>`;
+    }
+    function showAuthorizationError(error) {
+      stopSignatureSavingMotion();
+      successPanel.classList.remove("hidden");
+      successPanel.innerHTML = `
+        <div class="notice bad">
+          <strong>No se pudo confirmar la firma.</strong><br>
+          ${esc(signatureOffline() ? "Sin conexión a internet. Verificá tu conexión para continuar." : (error.message || "Revise la conexión y vuelva a guardar."))}
+        </div>
+        <div class="btn-row"><button class="btn primary" type="button" id="retrySignatureSave">Volver a intentar</button></div>`;
+    }
+    function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+    function signatureMatches(data, snapshot) {
+      const empVehicle = (snapshot?.employeeState?.vehicles || []).find((vehicle) => vehicle.id === data.employeeVehicleId || vehicle.rec === data.number);
+      const adminRec = (snapshot?.appState?.receptions || []).find((rec) => rec.number === data.number || rec.id === `emp-${data.employeeVehicleId}`);
+      if (!empVehicle || !adminRec) return false;
+      const employeeOk =
+        empVehicle.autorizado === true &&
+        String(empVehicle.clientName || "") === data.clientName &&
+        String(empVehicle.clientPhone || "") === data.phone &&
+        String(empVehicle.signatureDataUrl || "") === data.signatureDataUrl;
+      const adminOk =
+        adminRec.signed === true &&
+        String(adminRec.client?.name || "") === data.clientName &&
+        String(adminRec.client?.phone || "") === data.phone &&
+        String(adminRec.signatureDataUrl || "") === data.signatureDataUrl;
+      return employeeOk && adminOk;
+    }
+    async function confirmAuthorizationSaved(data) {
+      const authorized = await ensureSignatureSession(data.employeeId);
+      if (!authorized) throw new Error("Debe iniciar sesión para guardar la firma.");
+      if (!window.AM_CLOUD_SYNC?.saveReceptionNow) throw new Error("El servidor no está disponible para guardar la firma.");
+      const result = await window.AM_CLOUD_SYNC.saveReceptionNow(data.number, "authorization-signature-confirmed");
+      if (!result?.ok || !result?.confirmedByServer) throw new Error(`El servidor no confirmó que la firma de ${data.number} quedó guardada.`);
+      return true;
+    }
+    function populateYearOptions() {
+      const yearSelect = form.elements.anio;
+      const currentYear = new Date().getFullYear();
+      for (let year = currentYear; year >= 1965; year -= 1) {
+        const option = document.createElement("option");
+        option.value = String(year);
+        option.textContent = String(year);
+        yearSelect.appendChild(option);
+      }
+    }
+    function prefillExpressSignature() {
+      if (!expressSignatureMode) return;
+      const employeeId = String(launchParams.get("empleado") || "").toLowerCase();
+      if (employees[employeeId]) form.elements.employeeId.value = employeeId;
+      form.elements.time.value = launchParams.get("hora") || currentTimeInput();
+      form.elements.marca.value = upper(launchParams.get("marca") || "");
+      form.elements.modelo.value = upper(launchParams.get("modelo") || "");
+      form.elements.anio.value = launchParams.get("anio") || "";
+      form.elements.fallaReportada.value = upper(launchParams.get("falla") || "");
+      document.getElementById("prevStep").classList.add("hidden");
+      showStep("client");
+    }
+    async function refreshExistingSignatureState(employeeId = "") {
+      try {
+        if (employeeId) {
+          const authorized = await ensureSignatureSession(employeeId);
+          if (!authorized) return false;
+        }
+        if (!window.AM_CLOUD_SYNC?.isReady?.()) return false;
+        if (window.AM_CLOUD_SYNC.loadLatest) await window.AM_CLOUD_SYNC.loadLatest();
+        else await window.AM_CLOUD_SYNC.ready();
+        return true;
+      } catch (error) {
+        console.warn("No se pudo sincronizar la lista de firmas.", error);
+        alert(error.message || "No se pudo sincronizar la lista de firmas.");
+        return false;
+      }
+    }
+    async function prefillExistingSignature() {
+      if (!existingSignatureMode) return;
+      const employeeId = String(launchParams.get("empleado") || "").toLowerCase();
+      const vehicleId = String(launchParams.get("vehicleId") || "");
+      existingProfileMode = false;
+      selectedExistingVehicle = null;
+      document.getElementById("existingEmployeeId").value = employees[employeeId] ? employeeId : "";
+      showStep("existing");
+      if (employees[employeeId]) {
+        document.getElementById("existingVehicleList").innerHTML = '<div class="empty-existing">Sincronizando vehículos activos del dashboard...</div>';
+      }
+      await refreshExistingSignatureState(employeeId);
+      renderExistingVehicleList();
+      if (vehicleId) {
+        beginExistingSignature(vehicleId);
+        return;
+      }
+    }
+
+    ["marca", "modelo", "fallaReportada", "clientName"].forEach((name) => {
+      const input = form.elements[name];
+      input.style.textTransform = "uppercase";
+      input.addEventListener("input", () => {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        input.value = upper(input.value);
+        try { input.setSelectionRange(start, end); } catch {}
+      });
+    });
+    form.elements.phone.addEventListener("input", () => {
+      form.elements.phone.value = String(form.elements.phone.value || "").replace(/\D+/g, "");
+    });
+
+    document.getElementById("nextStep").addEventListener("click", async () => {
+      const fields = ["employeeId", "time", "marca", "modelo", "anio", "fallaReportada"].map((name) => form.elements[name]);
+      if (fields.some((field) => !field.reportValidity())) return;
+      try { if (!await ensureSignatureSession(form.elements.employeeId.value)) return; }
+      catch (error) { alert(error.message || "No se pudo iniciar sesión."); return; }
+      showStep("client");
+    });
+    document.getElementById("startNewProfile").addEventListener("click", () => {
+      existingProfileMode = false;
+      selectedExistingVehicle = null;
+      document.getElementById("prevStep").classList.remove("hidden");
+      showStep("vehicle");
+    });
+    document.getElementById("startExistingProfile").addEventListener("click", () => {
+      existingProfileMode = false;
+      selectedExistingVehicle = null;
+      document.getElementById("existingEmployeeId").value = "";
+      renderExistingVehicleList();
+      showStep("existing");
+    });
+    document.getElementById("backFromExisting").addEventListener("click", () => showStep("mode"));
+    document.getElementById("existingEmployeeId").addEventListener("change", async () => {
+      const employeeId = document.getElementById("existingEmployeeId").value;
+      document.getElementById("existingVehicleList").innerHTML = '<div class="empty-existing">Sincronizando vehículos activos del dashboard...</div>';
+      if (employeeId) await refreshExistingSignatureState(employeeId);
+      renderExistingVehicleList();
+    });
+    document.getElementById("existingVehicleList").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-existing-vehicle]");
+      if (!button) return;
+      beginExistingSignature(button.dataset.existingVehicle || "");
+    });
+    document.getElementById("prevStep").addEventListener("click", () => showStep("vehicle"));
+    document.getElementById("clearSignature").addEventListener("click", clearSignature);
+    signaturePad.addEventListener("pointerdown", startSignature);
+    signaturePad.addEventListener("pointermove", moveSignature);
+    signaturePad.addEventListener("pointerup", endSignature);
+    signaturePad.addEventListener("pointerleave", endSignature);
+    window.addEventListener("resize", resizeSignature);
+    form.addEventListener("reset", () => {
+      if (quickAuthInternalReset) return;
+      if (quickAuthResetTimer) clearTimeout(quickAuthResetTimer);
+      quickAuthResetTimer = setTimeout(() => { quickAuthResetTimer = null; applyResetState(); }, 0);
+    });
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (currentStep !== "client") {
+        showStep("client");
+        return;
+      }
+      if (!form.reportValidity()) return;
+      if (!hasSignature) {
+        alert("Debe capturar la firma del cliente antes de guardar.");
+        return;
+      }
+      const adminState = AM_SIMPLE_STORE.load();
+      const formData = new FormData(form);
+      const employeeId = String(formData.get("employeeId") || "");
+      const employeeName = employees[employeeId] || "EMPLEADO";
+      const employeeVehicleId = expressSignatureMode
+        ? String(launchParams.get("vehicleId") || "")
+        : existingProfileMode
+          ? String(selectedExistingVehicle?.id || "")
+          : `qr_${Date.now()}_${token().slice(0, 8)}`;
+      const fecha = todayInput();
+      const hora = String(formData.get("time") || currentTimeInput());
+      const data = {
+        employeeVehicleId,
+        number: expressSignatureMode
+          ? String(launchParams.get("rec") || "")
+          : existingProfileMode
+            ? String(selectedExistingVehicle?.rec || "")
+            : nextReceptionNumber(adminState),
+        employeeId,
+        employeeName,
+        fecha,
+        hora,
+        clientName: upperTrim(formData.get("clientName")),
+        phone: String(formData.get("phone") || "").trim(),
+        marca: upperTrim(formData.get("marca")),
+        modelo: upperTrim(formData.get("modelo")),
+        anio: upperTrim(formData.get("anio")),
+        fallaReportada: upperTrim(formData.get("fallaReportada")),
+        signatureDate: prettyDateTime(fecha, hora),
+        signatureDataUrl: signaturePad.toDataURL("image/png")
+      };
+      if (expressSignatureMode && (!data.employeeVehicleId || !data.number)) {
+        alert("No se encontró el expediente express original para guardar la firma.");
+        return;
+      }
+      if (existingProfileMode && (!data.employeeVehicleId || !data.number)) {
+        alert("No se encontró el perfil original para guardar la firma.");
+        return;
+      }
+      try { if (!await ensureSignatureSession(data.employeeId)) return; }
+      catch (error) { alert(error.message || "No se pudo iniciar sesión."); return; }
+      showSavingState(data);
+      try {
+        saveAuthorization(data);
+        await confirmAuthorizationSaved(data);
+      } catch (error) {
+        showAuthorizationError(error);
+        return;
+      }
+      showAuthorizationSuccess();
+      if (expressSignatureMode) window.setTimeout(() => { location.href = `empleado.html#empleado=${encodeURIComponent(data.employeeId)}`; }, 1200);
+      else {
+        if (quickAuthPostSaveTimer) clearTimeout(quickAuthPostSaveTimer);
+        quickAuthPostSaveTimer = window.setTimeout(() => { quickAuthPostSaveTimer = null; resetForm(); }, 1200);
+      }
+      return;
+    });
+    successPanel.addEventListener("click", (event) => {
+      if (event.target.closest("#retrySignatureSave")) {
+        successPanel.classList.add("hidden");
+        form.classList.remove("hidden");
+        showStep("client");
+        return;
+      }
+      if (event.target.closest("#newQuickAuth")) {
+        successPanel.classList.add("hidden");
+        form.classList.remove("hidden");
+        resetForm();
+      }
+    });
+
+    populateYearOptions();
+    form.elements.time.value = currentTimeInput();
+    prefillExpressSignature();
+    prefillExistingSignature();
+    requestAnimationFrame(resizeSignature);
+  </script>
+</body>
+</html>
+
