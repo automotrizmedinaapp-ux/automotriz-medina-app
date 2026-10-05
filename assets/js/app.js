@@ -4262,9 +4262,12 @@ function frontReceptionPhoto(rec) {
 
 function receptionPhotos(rec) {
   const own = Array.isArray(rec?.photos) ? rec.photos : [];
-  if (own.some((photo) => photo?.dataUrl)) return own;
   const cached = globalThis.AM_CLOUD_SYNC?.cachedPhotos?.(rec);
-  return Array.isArray(cached) ? cached : own;
+  if (Array.isArray(cached) && cached.some((photo) => typeof photo?.dataUrl === 'string' && photo.dataUrl)) return cached;
+  if (own.some((photo) => typeof photo?.dataUrl === 'string' && photo.dataUrl)) return own;
+  // Si solo hay referencias Drive y la hidratación visual falló, mostrar espacios vacíos
+  // en vez de intentar usar [object Object] como URL de imagen.
+  return own.map((photo) => ({ ...photo, dataUrl: typeof photo?.dataUrl === 'string' ? photo.dataUrl : '' }));
 }
 
 function photoLabelKey(value) {
@@ -5346,7 +5349,9 @@ function adminInvoiceList(rec) {
   }
   const cloud = globalThis.AM_CLOUD_SYNC?.cachedInvoices?.(rec);
   const initial = Array.isArray(cloud) ? cloud : (Array.isArray(rec.invoices) ? rec.invoices : []);
-  const list = JSON.parse(JSON.stringify(initial || []));
+  const list = JSON.parse(JSON.stringify(initial || [])).map((item) => ({
+    ...item, dataUrl: typeof item?.dataUrl === 'string' ? item.dataUrl : ''
+  }));
   adminInvoiceDrafts.set(rec.id, list);
   return list;
 }

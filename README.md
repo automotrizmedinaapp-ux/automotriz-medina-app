@@ -1,4 +1,4 @@
-# Automotriz Medina V4.16
+# Automotriz Medina V4.17
 
 Frontend estático preparado para GitHub Pages.
 
@@ -30,3 +30,10 @@ Antes de publicar, la validación automática del repositorio debe finalizar cor
 - Papelera sigue siendo recuperable; la limpieza exhaustiva ocurre únicamente después de la purga definitiva confirmada por el servidor.
 - Conserva la protección V4.15 que impide que una caché visual de facturas cree facturas fantasma en expedientes nuevos.
 - No requiere cambios en Apps Script.
+
+
+## V4.17
+- Corrige desbordamiento de cuota de localStorage al cargar fotografías desde Drive.
+- Los medios confirmados en nube permanecen como referencias Drive en el estado local; las imágenes hidratadas viven solo en memoria/Cache Storage.
+- Migra automáticamente residuos V4.16 de expedientes ya confirmados en Drive sin borrar datos del servidor.
+- Un fallo de cache local ya no puede dejar ADMIN o empleado con dashboard vacío.

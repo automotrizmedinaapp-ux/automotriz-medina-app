@@ -290,11 +290,20 @@
   }
   function setAux(kind, recOrId, value) {
     const id = auxIdentity(recOrId);
-    if (!id) return;
-    const used = new Set();
-    const payload = JSON.stringify(dehydrate(clone(value, []), used));
-    rawSet(auxKey(kind, id), payload);
-    garbageCollectMedia();
+    if (!id) return false;
+    try {
+      const used = new Set();
+      const payload = JSON.stringify(dehydrate(clone(value, []), used));
+      rawSet(auxKey(kind, id), payload);
+      garbageCollectMedia();
+      return true;
+    } catch (error) {
+      // Los auxiliares son cache, nunca datos autoritativos. Una cuota llena no debe
+      // impedir cargar o usar los expedientes que están seguros en Drive.
+      try { garbageCollectMedia(); } catch {}
+      console.warn('Cache local de medios omitido por falta de espacio.', error);
+      return false;
+    }
   }
   function getAux(kind, recOrId) {
     const id = auxIdentity(recOrId);

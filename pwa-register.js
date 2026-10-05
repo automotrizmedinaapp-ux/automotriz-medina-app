@@ -3,7 +3,7 @@
   if (!('serviceWorker' in navigator) || !isSecure) return;
 
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('./sw.js?v=20261003-v4-stage4-16-github-ready', { updateViaCache: 'none' })
+    navigator.serviceWorker.register('./sw.js?v=20261005-v4-stage4-17-github-ready', { updateViaCache: 'none' })
       .then(function (registration) {
         registration.update();
         setInterval(function () { registration.update(); }, 60 * 60 * 1000);

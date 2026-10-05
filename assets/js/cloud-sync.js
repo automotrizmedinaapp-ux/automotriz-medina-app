@@ -7,7 +7,7 @@
 globalThis.AM_CLOUD_SYNC = (() => {
   'use strict';
 
-  const BUILD = 'v4-stage4.16-github-ready-2026-10-03';
+  const BUILD = 'v4-stage4.17-github-ready-2026-10-05';
   const DRIVE_REQUIRED = true;
   const CONFIG_KEY = 'am_v4_sync_config_v2';
   const SESSIONS_KEY = 'am_v4_backend_device_sessions_v2';
@@ -531,20 +531,39 @@ globalThis.AM_CLOUD_SYNC = (() => {
       ok: true, schemaVersion: workspace.schemaVersion, updatedAt: workspace.updatedAt,
       nextReceptionNumber: workspace.nextReceptionNumber, expedientes: entries
     };
-    let receptions = Array.isArray(workspace.expedientes) ? clone(workspace.expedientes, []) : [];
-    if (options.hydrateMedia !== false) receptions = await hydrateWorkspaceMedia(receptions);
-    receptions.forEach(rec => {
-      if (Array.isArray(rec.photos) && rec.photos.some(p => p?.dataUrl)) cachePhotos(rec, rec.photos);
-      // Las facturas llegan del backend con referencias Drive y hydrateWorkspaceMedia
-      // las convierte nuevamente a dataUrl. Guardamos únicamente esa versión hidratada
-      // para que ADMIN y empleado nunca intenten pintar un objeto fileId como imagen.
-      if (Array.isArray(rec.invoices)) cacheInvoices(rec, rec.invoices);
-    });
+
+    // IMPORTANTE V4.17: mantenemos dos árboles distintos.
+    // remoteReceptions conserva las referencias pequeñas de Drive y es lo único que
+    // se persiste localmente. visualReceptions contiene dataUrl solo para renderizar.
+    let remoteReceptions = Array.isArray(workspace.expedientes) ? clone(workspace.expedientes, []) : [];
     const local = window.AM_V4_DATA?.readAdminState?.() || {};
+
+    let visualReceptions = clone(remoteReceptions, []);
+    if (options.hydrateMedia !== false) visualReceptions = await hydrateWorkspaceMedia(visualReceptions);
+    visualReceptions.forEach(rec => {
+      if (Array.isArray(rec.photos) && rec.photos.some(p => typeof p?.dataUrl === 'string' && p.dataUrl)) {
+        cachePhotos(rec, rec.photos, { persist: false });
+      }
+      // Las facturas hidratadas viven en memoria/CacheStorage; expediente.json conserva refs Drive.
+      if (Array.isArray(rec.invoices)) cacheInvoices(rec, rec.invoices, { persist: false });
+    });
+
+    // Solo después de confirmar que la nube y sus medios pudieron cargarse, liberamos
+    // residuos V4.16 de expedientes que ya tienen copia autoritativa en Drive.
+    // Así una falla de red nunca destruye el último estado local visible.
+    for (const remote of remoteReceptions) {
+      try { window.AM_V4_DATA?.purgeLocalReceptionResidue?.(remote); } catch {}
+    }
+
+    let receptions = remoteReceptions;
     const currentSession = session();
     if (currentSession?.role === 'employee') {
       const employeeId = cleanEmployeeId(currentSession.employeeId);
-      const preserved = (local.receptions || []).filter(rec => cleanEmployeeId(rec.employeeId) !== employeeId);
+      // Otros expedientes locales se conservan solo como metadatos; nunca arrastramos
+      // blobs base64 antiguos de otro técnico al almacenamiento del navegador.
+      const preserved = (local.receptions || [])
+        .filter(rec => cleanEmployeeId(rec.employeeId) !== employeeId)
+        .map(rec => stripEmbeddedMedia(rec));
       receptions = [...receptions, ...preserved];
     }
     const appState = {
@@ -853,7 +872,7 @@ globalThis.AM_CLOUD_SYNC = (() => {
   function invoiceListContainsRemoteRefs(list) {
     return Array.isArray(list) && list.some(entry => isRemoteMediaRef(entry?.dataUrl));
   }
-  function cacheInvoices(item, invoices) {
+  function cacheInvoices(item, invoices, options = {}) {
     const list = clone(Array.isArray(invoices) ? invoices : [], []);
     // saveReceptionBundle devuelve el expediente ya materializado para Drive, por lo
     // que invoice.dataUrl puede ser un objeto {__amMediaFile,fileId,...}. Esa forma
@@ -864,7 +883,9 @@ globalThis.AM_CLOUD_SYNC = (() => {
       return clone(Array.isArray(existing) ? existing : [], []);
     }
     for (const k of keys(item)) invoiceCache.set(k, list);
-    window.AM_V4_DATA?.setAux?.('invoices', item, list);
+    // V4.17: las imágenes descargadas desde Drive se mantienen en memoria/CacheStorage.
+    // No duplicarlas en localStorage evita agotar su cuota y bloquear toda la carga.
+    if (options.persist !== false) window.AM_V4_DATA?.setAux?.('invoices', item, list);
     return clone(list, []);
   }
   function cachedInvoices(item) {
@@ -889,15 +910,16 @@ globalThis.AM_CLOUD_SYNC = (() => {
     if (window.AM_V4_DATA?.clearAux?.('invoices', item)) removed += 1;
     return removed;
   }
-  function cachePhotos(item, photos) {
+  function cachePhotos(item, photos, options = {}) {
     const list = clone(Array.isArray(photos) ? photos : [], []);
     for (const k of keys(item)) {
       const old = photoCache.get(k) || [];
-      const oldCount = old.filter(x => x?.dataUrl).length;
-      const newCount = list.filter(x => x?.dataUrl).length;
+      const oldCount = old.filter(x => typeof x?.dataUrl === 'string' && x.dataUrl).length;
+      const newCount = list.filter(x => typeof x?.dataUrl === 'string' && x.dataUrl).length;
       if (newCount >= oldCount) photoCache.set(k, list);
     }
-    window.AM_V4_DATA?.setAux?.('photos', item, list);
+    // V4.17: el cache visual de nube no se duplica en localStorage.
+    if (options.persist !== false) window.AM_V4_DATA?.setAux?.('photos', item, list);
     return clone(list, []);
   }
   function cachedPhotos(item) {
@@ -978,6 +1000,6 @@ globalThis.AM_CLOUD_SYNC = (() => {
     cacheInvoices, cachedInvoices, clearInvoiceCache, cachePhotos, cachedPhotos, forgetMediaRefs, purgeLocalReceptionCaches,
     loadIndex, loadReception, archiveReception, trashReception, restoreReception, activateReception, pruneMedia, purgeReception,
     publicClient, publicTracking, publicAuthorize, publicAcknowledgePhotos, publicConfirmTrackingRequest, loadPublicSnapshot,
-    _integrationStage: 'stage4.16-github-ready', _build: BUILD
+    _integrationStage: 'stage4.17-github-ready', _build: BUILD
   };
 })();
