@@ -1588,7 +1588,7 @@ function renderLocalArchiveMobileCard(entry, index) {
   const archiveModeLabel = entry?.backup?.archiveModeLabel || (entry?.backup?.archiveMode === "partial" || /-parcial\.amr$/i.test(entry?.path || "") ? "Parcial" : "Completo");
   return `
     <article class="mobile-vehicle-card" data-action="restore-local-archive-preview" data-local-archive-index="${index}" role="button" tabindex="0">
-      <div class="mobile-vehicle-photo ${photo ? "" : "empty"}">
+      <div class="mobile-vehicle-photo ${photo ? "" : `empty ${thumbInfo.status}`}">
         ${photo ? `<img src="${photo}" alt="${esc(title)}">` : `<span>${esc(rec.number || "AM")}</span>`}
       </div>
       <div class="mobile-vehicle-info">
@@ -3860,6 +3860,36 @@ function applyAdminCloudStatus(detail = {}) {
   }
 }
 
+document.addEventListener("click", async (event) => {
+  const button = event.target.closest?.('[data-action="open-dashboard-thumbnail"]');
+  if (!button) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const rec = state().receptions.find(item => item.id === button.dataset.id);
+  if (!rec) return;
+  try {
+    const photos = await globalThis.AM_CLOUD_SYNC?.ensureReceptionPhotos?.(rec);
+    const front = (Array.isArray(photos) ? photos : []).find(photo => photoLabelKey(photo?.label) === "frente") || photos?.[0];
+    if (front?.dataUrl) openImagePreviewFromData(front.dataUrl, `Frente - ${rec.number || ""}`, mobileVehicleTitle(rec));
+  } catch (error) { console.warn("No se pudo abrir fotografía frontal", error); }
+}, true);
+
+let adminMediaRenderTimer = 0;
+window.addEventListener("am-cloud-media-ready", (event) => {
+  if (document.body?.dataset.page !== "admin") return;
+  clearTimeout(adminMediaRenderTimer);
+  adminMediaRenderTimer = setTimeout(() => {
+    try {
+      if (event?.detail?.kind === "thumbnail") {
+        renderReceptionTable();
+        return;
+      }
+      const expedienteVisible = !qs('[data-section="expediente"]')?.classList.contains("hidden");
+      if (expedienteVisible) renderAdmin();
+    } catch (error) { console.warn("No se pudo refrescar media visual", error); }
+  }, 80);
+});
+
 window.addEventListener("am-cloud-background-status", (event) => {
   applyAdminCloudStatus(event.detail || {});
 });
@@ -3975,9 +4005,7 @@ function showAdminFileTab(target = adminFileTab) {
   });
   if (adminFileTab === "archivo") {
     const rec = selected();
-    if (rec) {
-      setAdminMasterFrameForReception(rec);
-    }
+    if (rec) renderAdminFile(rec);
   }
   if (adminFileTab === "facturas") renderAdminInvoices();
 }
@@ -4265,9 +4293,31 @@ function receptionPhotos(rec) {
   const cached = globalThis.AM_CLOUD_SYNC?.cachedPhotos?.(rec);
   if (Array.isArray(cached) && cached.some((photo) => typeof photo?.dataUrl === 'string' && photo.dataUrl)) return cached;
   if (own.some((photo) => typeof photo?.dataUrl === 'string' && photo.dataUrl)) return own;
-  // Si solo hay referencias Drive y la hidratación visual falló, mostrar espacios vacíos
-  // en vez de intentar usar [object Object] como URL de imagen.
+  // V4.18: las referencias Drive se hidratan en segundo plano. La tabla se muestra
+  // inmediatamente y una fotografía lenta/ausente no bloquea los datos del dashboard.
+  if (own.some((photo) => photo?.dataUrl && typeof photo.dataUrl === 'object')) {
+    globalThis.AM_CLOUD_SYNC?.ensureReceptionPhotos?.(rec).catch(() => {});
+  }
   return own.map((photo) => ({ ...photo, dataUrl: typeof photo?.dataUrl === 'string' ? photo.dataUrl : '' }));
+}
+
+function dashboardThumbnailInfo(rec) {
+  if (!rec) return { src: "", status: "missing" };
+  const cloud = globalThis.AM_CLOUD_SYNC;
+  const src = cloud?.cachedThumbnail?.(rec) || "";
+  let status = cloud?.thumbnailStatus?.(rec) || (src ? "ready" : "loading");
+  if (!src && status === "loading") cloud?.ensureReceptionThumbnail?.(rec).catch(() => {});
+  if (src) status = "ready";
+  return { src, status };
+}
+
+function dashboardThumbnailMarkup(rec, className = "") {
+  const { src, status } = dashboardThumbnailInfo(rec);
+  if (src) {
+    return `<button type="button" class="table-thumb dashboard-thumb ${className}" data-action="open-dashboard-thumbnail" data-id="${esc(rec.id)}" title="Ver fotografía frontal"><img src="${src}" alt="Miniatura ${esc(rec.vehicle?.marca || "vehículo")}"></button>`;
+  }
+  const label = status === "missing" ? "Sin fotografía" : status === "error" ? "Imagen no disponible" : "Cargando…";
+  return `<div class="table-thumb table-thumb-empty dashboard-thumb ${status === "loading" ? "is-loading" : status === "error" ? "is-error" : "is-missing"} ${className}" aria-label="${esc(label)}">${esc(label)}</div>`;
 }
 
 function photoLabelKey(value) {
@@ -4300,6 +4350,12 @@ function receptionPhotoByLabel(rec, label, fallback = "") {
   return photos.find((photo) => targets.has(photoLabelKey(photo.label))) || null;
 }
 
+function rawReceptionPhotoByLabel(rec, label, fallback = "") {
+  const photos = Array.isArray(rec?.photos) ? rec.photos : [];
+  const targets = photoLabelTargets(label, fallback);
+  return photos.find((photo) => targets.has(photoLabelKey(photo?.label))) || null;
+}
+
 function receptionTableThumb(rec, label = "Frente", fallback = "", className = "") {
   const photo = label === "Frente" ? frontReceptionPhoto(rec) : receptionPhotoByLabel(rec, label, fallback);
   const shortLabel = label.replace(/^Tarjeta\s+/i, "");
@@ -4310,7 +4366,7 @@ function receptionTableThumb(rec, label = "Frente", fallback = "", className = "
 }
 
 function mobileVehiclePhoto(rec) {
-  return frontReceptionPhoto(rec)?.dataUrl || "";
+  return dashboardThumbnailInfo(rec).src || "";
 }
 
 function mobileVehicleCardBackPhoto(rec) {
@@ -4383,8 +4439,9 @@ function mobileAdminActionsMenu(rec) {
 }
 
 function renderMobileVehicleCard(rec, options = {}) {
-  const photo = mobileVehiclePhoto(rec);
-  const cardBackPhoto = mobileVehicleCardBackPhoto(rec);
+  const thumbInfo = dashboardThumbnailInfo(rec);
+  const photo = thumbInfo.src;
+  const cardBackAvailable = !!rawReceptionPhotoByLabel(rec, "Tarjeta reverso")?.dataUrl;
   const status = options.status || rec.status || "EN PROCESO";
   const owner = options.owner || rec.employeeName || "Sin técnico";
   const subtitle = options.subtitle || rec.number || rec.vehicle?.placa || "";
@@ -4408,7 +4465,7 @@ function renderMobileVehicleCard(rec, options = {}) {
       ${trashSelector}
       <div class="mobile-vehicle-photo ${photo ? "" : "empty"}">
         ${notificationBadge}
-        ${photo ? `<img src="${photo}" alt="${esc(mobileVehicleTitle(rec))}">` : `<span>${esc(rec.number || "AM")}</span>`}
+        ${photo ? `<img src="${photo}" alt="${esc(mobileVehicleTitle(rec))}">` : `<span>${thumbInfo.status === "missing" ? "Sin fotografía" : thumbInfo.status === "error" ? "Imagen no disponible" : "Cargando imagen…"}</span>`}
       </div>
       <div class="mobile-vehicle-info">
         <span class="mobile-vehicle-status ${mobileVehicleStatusClass(status)}">${esc(status)}</span>
@@ -4420,7 +4477,7 @@ function renderMobileVehicleCard(rec, options = {}) {
         ${deadlineMobileGauge(rec)}
         ${finalizationButton}
         <div class="mobile-vehicle-actions">
-          <button type="button" class="mobile-card-link ${cardBackPhoto ? "" : "disabled"}" data-action="open-mobile-card-photo" data-id="${esc(rec.id)}" ${cardBackPhoto ? "" : "disabled"}>${cardBackPhoto ? "Tarjeta" : "Sin tarjeta"}</button>
+          <button type="button" class="mobile-card-link ${cardBackAvailable ? "" : "disabled"}" data-action="open-mobile-card-photo" data-id="${esc(rec.id)}" ${cardBackAvailable ? "" : "disabled"}>${cardBackAvailable ? "Tarjeta" : "Sin tarjeta"}</button>
         </div>
         ${adminActions}
       </div>
@@ -4538,11 +4595,18 @@ function closeMobileCardBackViewer() {
   qs("[data-mobile-card-viewer]")?.remove();
 }
 
-function openMobileCardBackViewer(recId) {
+async function openMobileCardBackViewer(recId) {
   const rec = state().receptions.find((item) => item.id === recId);
-  const dataUrl = mobileVehicleCardBackPhoto(rec);
-  if (!rec || !dataUrl) {
-    toast("Este expediente no tiene tarjeta reverso cargada.", "warn");
+  if (!rec) return;
+  let dataUrl = mobileVehicleCardBackPhoto(rec);
+  if (!dataUrl && rawReceptionPhotoByLabel(rec, "Tarjeta reverso")?.dataUrl) {
+    try {
+      await globalThis.AM_CLOUD_SYNC?.ensureReceptionPhotos?.(rec);
+      dataUrl = mobileVehicleCardBackPhoto(rec);
+    } catch (error) { console.warn("No se pudo cargar tarjeta reverso", error); }
+  }
+  if (!dataUrl) {
+    toast("Este expediente no tiene tarjeta reverso disponible.", "warn");
     return;
   }
   closeMobileCardBackViewer();
@@ -4747,9 +4811,7 @@ function renderReceptionTable() {
   tbody.innerHTML = filtered.map((rec) => `
     <tr class="clickable-row ${String(rec.status || "").toUpperCase() === "FINALIZADO" ? "row-finalized" : ""} ${signatureNeedsAdminReview(rec) ? "row-signature-review" : ""}" data-open-file-row="${rec.id}" tabindex="0" title="Abrir seguimiento">
       <td data-label="Vehículo">${isDeleted(rec) ? `<label class="trash-row-selector"><input type="checkbox" data-trash-select-id="${esc(rec.id)}" ${trashSelectedIds.has(rec.id) ? "checked" : ""}><span>Seleccionar</span></label>` : ""}${finalizationNeedsPublish(rec) ? `<button class="btn primary publish-finalization-btn" data-action="publish-finalization" data-id="${rec.id}" title="Publicar finalización al cliente">Publicar finalización</button>` : ""}<strong>${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}</strong>${receptionNotificationAckCount(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count" title="Confirmaciones pendientes">${receptionNotificationAckCount(rec)}</span>` : ""}${signatureNeedsAdminReview(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count signature-review-count" title="Firma pendiente de revisión">!</span>` : ""}<br><small>${rec.vehicle.placa}</small>${adminVehicleCloudStatus(rec)}</td>
-      <td data-label="Fotografía">${receptionTableThumb(rec, "Frente")}</td>
-      <td data-label="Tarjeta reverso">${receptionTableThumb(rec, "Tarjeta reverso", "", "card-thumb")}</td>
-      <td data-label="Tarjeta frente">${receptionTableThumb(rec, "Tarjeta frente", "", "card-thumb")}</td>
+      <td data-label="Miniatura">${dashboardThumbnailMarkup(rec)}</td>
       <td data-label="Técnico">${esc(rec.employeeName || "N/D")}</td>
       <td data-label="Tiempo límite">${deadlineBadge(rec)}</td>
       <td data-label="Estado"><span class="pill ${statusTone(rec.status)}">${rec.status}</span>${rec.express ? `<br><small>${esc(rec.serviceType || "Servicio express")}</small>` : ""}</td>
@@ -4757,7 +4819,7 @@ function renderReceptionTable() {
       <td data-label="Cliente">${esc(rec.client.name || "Cliente pendiente")}<br><small>${esc(rec.client.phone || "Sin teléfono")}</small></td>
       <td data-label="Motivo">${esc(shortText(serviceReason(rec) || "Sin motivo registrado", 110))}</td>
       <td data-label="Recepción"><strong>${esc(rec.number)}</strong><br><small>${isDeleted(rec) ? `Papelera: ${esc(new Date(rec.deletedAt).toLocaleDateString("es-SV"))}` : esc(rec.clientToken)}</small><div class="table-actions">${receptionRowActions(rec)}</div></td>
-    </tr>`).join("") || '<tr><td colspan="11">No hay vehículos en este filtro.</td></tr>';
+    </tr>`).join("") || '<tr><td colspan="9">No hay vehículos en este filtro.</td></tr>';
   qsa("[data-admin-filter]").forEach((button) => {
     const isEmployee = button.dataset.adminFilter === "employee" && adminDashboardFilter === "employee" && button.dataset.employeeFilter === adminEmployeeFilter;
     const isDirect = button.dataset.adminFilter !== "employee" && button.dataset.adminFilter === adminDashboardFilter;
@@ -5254,7 +5316,9 @@ function renderAdminFile(rec) {
       </div>`).join("") + fuelGaugeMarkup(rec.internalWork?.fuelLevel, false);
   }
   const photos = qs("[data-admin-file-photos]");
-  if (photos) {
+  const expedienteVisibleForMedia = !qs('[data-section="expediente"]')?.classList.contains("hidden");
+  const photoTabActive = expedienteVisibleForMedia && adminFileTab === "archivo";
+  if (photos && photoTabActive) {
     photos.innerHTML = receptionPhotos(rec).map((photo, index) => `
       <article class="photo-card">
         ${photoVisual(photo)}
@@ -5319,6 +5383,8 @@ function renderEmployee() {
 function renderAdminInvoices() {
   const host = qs("[data-admin-invoices]");
   if (!host) return;
+  const expedienteVisible = !qs('[data-section="expediente"]')?.classList.contains("hidden");
+  if (!expedienteVisible || adminFileTab !== "facturas") return;
   const rec = selected();
   if (!rec) {
     host.innerHTML = '<div class="notice">Seleccione un expediente para ver facturas.</div>';
@@ -5348,6 +5414,9 @@ function adminInvoiceList(rec) {
     adminInvoiceDrafts.delete(rec.id);
   }
   const cloud = globalThis.AM_CLOUD_SYNC?.cachedInvoices?.(rec);
+  if (!Array.isArray(cloud) && (rec.invoices || []).some(item => item?.dataUrl && typeof item.dataUrl === 'object')) {
+    globalThis.AM_CLOUD_SYNC?.ensureReceptionInvoices?.(rec).catch(() => {});
+  }
   const initial = Array.isArray(cloud) ? cloud : (Array.isArray(rec.invoices) ? rec.invoices : []);
   const list = JSON.parse(JSON.stringify(initial || [])).map((item) => ({
     ...item, dataUrl: typeof item?.dataUrl === 'string' ? item.dataUrl : ''
@@ -5563,21 +5632,23 @@ function renderEmployeeLists(employee) {
     activeList.innerHTML = active.map((rec) => `
       <tr>
         <td data-label="Recepción"><strong>${esc(rec.number)}</strong><br><small>${esc(rec.tracking?.receptionDate || "")}</small></td>
+        <td data-label="Miniatura">${dashboardThumbnailMarkup(rec)}</td>
         <td data-label="Vehículo">${esc(rec.vehicle.marca)} ${esc(rec.vehicle.modelo)} ${esc(rec.vehicle.anio)}<br><small>${esc(rec.vehicle.placa || "N/D")}</small></td>
         <td data-label="Estado"><span class="pill ${statusTone(rec.status)}">${esc(rec.status)}</span></td>
         <td data-label="Autorización">${rec.signed ? '<span class="pill ok">Autorizado</span>' : '<span class="pill warn">Pendiente</span>'}</td>
         <td data-label="Acción"><button class="btn primary" data-action="open-employee-vehicle" data-id="${rec.id}">Abrir vehículo</button></td>
-      </tr>`).join("") || '<tr><td colspan="5">No hay vehículos activos para este empleado.</td></tr>';
+      </tr>`).join("") || '<tr><td colspan="6">No hay vehículos activos para este empleado.</td></tr>';
   }
   const finishedList = qs("[data-employee-finished-list]");
   if (finishedList) {
     finishedList.innerHTML = finished.map((rec) => `
       <tr>
         <td data-label="Recepción"><strong>${esc(rec.number)}</strong></td>
+        <td data-label="Miniatura">${dashboardThumbnailMarkup(rec)}</td>
         <td data-label="Vehículo">${esc(rec.vehicle.marca)} ${esc(rec.vehicle.modelo)} ${esc(rec.vehicle.anio)}</td>
         <td data-label="Estado"><span class="pill ok">${esc(rec.status)}</span></td>
         <td data-label="Acción"><button class="btn" data-action="open-employee-vehicle" data-id="${rec.id}">Ver</button></td>
-      </tr>`).join("") || '<tr><td colspan="4">No hay vehículos finalizados.</td></tr>';
+      </tr>`).join("") || '<tr><td colspan="5">No hay vehículos finalizados.</td></tr>';
   }
 }
 
@@ -6517,7 +6588,7 @@ function handleActions() {
     if (action === "open-mobile-card-photo") {
       event.preventDefault();
       event.stopPropagation();
-      openMobileCardBackViewer(button.dataset.id || "");
+      openMobileCardBackViewer(button.dataset.id || "").catch(() => {});
       return;
     }
     if (action === "close-mobile-card-photo") {

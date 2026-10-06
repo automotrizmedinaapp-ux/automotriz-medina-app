@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Recuperación local de fotografías — Automotriz Medina</title>
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#17212b;background:#eef2f5}
+    body{margin:0;padding:24px}.wrap{max-width:1100px;margin:auto}.card{background:#fff;border:1px solid #d9e1e7;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 8px 24px #00000010}
+    h1{font-size:24px;margin:0 0 6px}h2{font-size:18px}.muted{color:#607080}.ok{color:#157347}.warn{color:#9a6700}.danger{color:#b42318}
+    button{border:1px solid #b9c6ce;background:#fff;border-radius:9px;padding:9px 13px;cursor:pointer}button.primary{background:#176f78;color:white;border-color:#176f78}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}.item{border:1px solid #dfe6eb;border-radius:10px;padding:10px}.item img{width:100%;height:150px;object-fit:cover;border-radius:7px;background:#edf1f3}.meta{font-size:12px;word-break:break-all;color:#56636d;margin:7px 0}.actions{display:flex;gap:8px;flex-wrap:wrap}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e8f3f4;font-size:12px}.hidden{display:none}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Recuperación local de fotografías</h1>
+    <p class="muted">Herramienta de solo lectura. Busca imágenes que todavía puedan existir en el almacenamiento de <strong>este navegador</strong>. No borra, modifica ni envía nada a Drive.</p>
+    <div class="actions"><button class="primary" id="scan">Buscar fotografías</button><button id="export">Exportar inventario JSON</button></div>
+    <p id="status" class="muted">Sin escanear.</p>
+  </div>
+  <div class="card">
+    <h2>Coincidencias relacionadas con AM-R-0016 / Nissan Altima 1993</h2>
+    <p class="muted">Se priorizan referencias históricas cuyo alcance local mencione AM-R-0016 o el ID interno conocido del expediente.</p>
+    <div id="target" class="grid"></div>
+  </div>
+  <div class="card">
+    <h2>Otras imágenes encontradas</h2>
+    <div id="other" class="grid"></div>
+  </div>
+</div>
+<script>
+(() => {
+  'use strict';
+  const TARGETS=['AM-R-0016','amv4-2d8efa4a751a9afcfc874964'];
+  const MEDIA_PREFIX='am_v4_media_v1:';
+  const REF_KEY='am_v4_cloud_media_refs_v2';
+  const CACHE_NAME='am-v4-media-data-v1';
+  let found=[];
+  const $=s=>document.querySelector(s);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function bytesOfDataUrl(v){try{return Math.max(0,Math.floor((String(v).split(',')[1]||'').length*3/4))}catch{return 0}}
+  function ext(v){const m=/^data:([^;,]+)/i.exec(String(v||''));return ({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif'})[(m?.[1]||'').toLowerCase()]||'bin'}
+  function download(item){const a=document.createElement('a');a.href=item.dataUrl;a.download=`recuperado-${item.fileId||item.key||Date.now()}.${ext(item.dataUrl)}`;document.body.appendChild(a);a.click();a.remove()}
+  function targetMatch(item){const hay=[item.scope,item.key,item.fileId,item.note].join(' ');return TARGETS.some(t=>hay.includes(t))}
+  function card(item){const img=/^data:image\//i.test(item.dataUrl)?`<img src="${item.dataUrl}" alt="Imagen recuperada">`:`<div class="muted">Medio no visualizable</div>`;return `<article class="item">${img}<div class="meta"><span class="pill">${esc(item.source)}</span><br>${esc(item.scope||item.fileId||item.key||'sin id')}<br>${Math.round((item.bytes||0)/1024)} KB</div><div class="actions"><button data-dl="${esc(item.uid)}">Descargar</button></div></article>`}
+  function render(){const t=found.filter(targetMatch),o=found.filter(x=>!targetMatch(x));$('#target').innerHTML=t.map(card).join('')||'<p class="muted">No se encontraron coincidencias directas.</p>';$('#other').innerHTML=o.map(card).join('')||'<p class="muted">No se encontraron otras imágenes.</p>';$('#status').innerHTML=`Encontrados <strong>${found.length}</strong> medios locales; <strong>${t.length}</strong> relacionados directamente con AM-R-0016.`;document.querySelectorAll('[data-dl]').forEach(b=>b.onclick=()=>download(found.find(x=>x.uid===b.dataset.dl)))}
+  async function scan(){found=[];const refs=(()=>{try{return JSON.parse(localStorage.getItem(REF_KEY)||'{}')||{}}catch{return{}}})();const refScopes=new Map();for(const [scope,ref] of Object.entries(refs)){if(ref?.fileId)refScopes.set(String(ref.fileId),scope)}
+    for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i)||'';if(!key.startsWith(MEDIA_PREFIX))continue;const data=localStorage.getItem(key)||'';if(/^data:(?:image|video|audio)\//i.test(data))found.push({uid:'ls:'+key,source:'localStorage V4.16',key,scope:'',fileId:'',dataUrl:data,bytes:bytesOfDataUrl(data)})}
+    if('caches' in window){try{const cache=await caches.open(CACHE_NAME);for(const req of await cache.keys()){const hit=await cache.match(req);const data=hit?await hit.text():'';if(!/^data:(?:image|video|audio)\//i.test(data))continue;const fileId=decodeURIComponent(req.url.split('/').pop()||'');found.push({uid:'cache:'+fileId,source:'CacheStorage',key:req.url,scope:refScopes.get(fileId)||'',fileId,dataUrl:data,bytes:bytesOfDataUrl(data)})}}catch(e){console.warn(e)}}
+    const seen=new Set();found=found.filter(x=>{const k=(x.fileId||'')+'|'+x.dataUrl.slice(0,120);if(seen.has(k))return false;seen.add(k);return true});render()
+  }
+  $('#scan').onclick=()=>scan().catch(e=>{$('#status').textContent='Error al escanear: '+e.message});
+  if(new URLSearchParams(location.search).get('autosc')==='1')setTimeout(()=>$('#scan').click(),0);
+  $('#export').onclick=()=>{const payload=found.map(({dataUrl,...rest})=>({...rest,hasDataUrl:!!dataUrl}));const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='inventario-cache-recuperacion.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+})();
+</script>
+</body>
+</html>

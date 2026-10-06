@@ -488,6 +488,7 @@ textarea { min-height: 104px; resize: vertical; }
   cursor: pointer;
 }
 .mobile-vehicle-photo.empty span { color: #777; font-weight: 900; font-size: 22px; }
+.mobile-vehicle-photo.loading{position:relative;overflow:hidden;background:#eef2f5}.mobile-vehicle-photo.loading:after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);animation:am-thumb-loading 1.15s infinite}.mobile-vehicle-photo.missing{background:#fff6e8}.mobile-vehicle-photo.missing span{color:#8a5a00}.mobile-vehicle-photo.error{background:#fff0f0}.mobile-vehicle-photo.error span{color:#a83232}
 .mobile-vehicle-info { padding: 10px 10px 12px; display: grid; gap: 3px; }
 .mobile-vehicle-status,
 .mobile-vehicle-alert {
@@ -706,6 +707,11 @@ tr.clickable-row:focus-visible { outline: 2px solid var(--brand); outline-offset
 .table-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .table-thumb.card-thumb { width: 84px; height: 58px; }
 .table-thumb-empty { cursor: default; }
+.dashboard-thumb.is-loading { position: relative; overflow: hidden; color: #637282; background: #eef2f5; }
+.dashboard-thumb.is-loading::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,.72), transparent); animation: am-thumb-loading 1.15s infinite; }
+.dashboard-thumb.is-missing { background: #fff6e8; color: #8a5a00; border-color: #ead4a1; }
+.dashboard-thumb.is-error { background: #fff0f0; color: #a83232; border-color: #e3b5b5; }
+@keyframes am-thumb-loading { 100% { transform: translateX(100%); } }
 .image-modal { position: fixed; inset: 0; z-index: 80; background: rgba(5,10,15,.78); display: grid; place-items: center; padding: 22px; }
 .image-modal.hidden { display: none; }
 .image-modal-card { width: min(980px, 96vw); max-height: 92vh; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,.42); display: grid; grid-template-rows: auto minmax(0,1fr); }

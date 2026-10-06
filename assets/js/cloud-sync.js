@@ -7,7 +7,7 @@
 globalThis.AM_CLOUD_SYNC = (() => {
   'use strict';
 
-  const BUILD = 'v4-stage4.17-github-ready-2026-10-05';
+  const BUILD = 'v4-stage4.18-integrity-2026-10-06';
   const DRIVE_REQUIRED = true;
   const CONFIG_KEY = 'am_v4_sync_config_v2';
   const SESSIONS_KEY = 'am_v4_backend_device_sessions_v2';
@@ -19,6 +19,10 @@ globalThis.AM_CLOUD_SYNC = (() => {
 
   const invoiceCache = new Map();
   const photoCache = new Map();
+  const thumbnailCache = new Map();
+  const thumbnailStateCache = new Map();
+  const mediaPrimeInFlight = new Map();
+  const mediaRetryAfter = new Map();
   let saveTail = Promise.resolve();
   let lastSnapshot = null;
   let lastRemoteIndex = null;
@@ -312,6 +316,47 @@ globalThis.AM_CLOUD_SYNC = (() => {
       await cache.put(key, new Response(dataUrl, { headers: { 'Content-Type': 'text/plain;charset=utf-8' } }));
     } catch {}
   }
+  async function thumbnailDataCacheGet(fileId) {
+    if (!fileId || !globalThis.caches) return '';
+    try {
+      const cache = await caches.open(MEDIA_DATA_CACHE_NAME);
+      const key = new Request(`${location.origin}/__am_v4_thumb_cache__/${encodeURIComponent(fileId)}`);
+      const hit = await cache.match(key);
+      return hit ? await hit.text() : '';
+    } catch { return ''; }
+  }
+  async function thumbnailDataCacheSet(fileId, dataUrl) {
+    if (!fileId || !dataUrl || !globalThis.caches) return;
+    try {
+      const cache = await caches.open(MEDIA_DATA_CACHE_NAME);
+      const key = new Request(`${location.origin}/__am_v4_thumb_cache__/${encodeURIComponent(fileId)}`);
+      await cache.put(key, new Response(dataUrl, { headers: { 'Content-Type': 'text/plain;charset=utf-8' } }));
+    } catch {}
+  }
+  function makeThumbnailDataUrl(dataUrl, maxEdge = 320, quality = 0.68) {
+    if (!dataUrl || !/^data:image\//i.test(String(dataUrl))) return Promise.resolve(dataUrl || '');
+    if (typeof Image === 'undefined' || typeof document === 'undefined') return Promise.resolve(dataUrl);
+    return new Promise((resolve) => {
+      const image = new Image();
+      image.onload = () => {
+        try {
+          const width = Math.max(1, Number(image.naturalWidth || image.width || 1));
+          const height = Math.max(1, Number(image.naturalHeight || image.height || 1));
+          const scale = Math.min(1, maxEdge / Math.max(width, height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(width * scale));
+          canvas.height = Math.max(1, Math.round(height * scale));
+          const context = canvas.getContext('2d', { alpha: false });
+          if (!context) { resolve(dataUrl); return; }
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          const thumb = canvas.toDataURL('image/webp', quality);
+          resolve(thumb || dataUrl);
+        } catch { resolve(dataUrl); }
+      };
+      image.onerror = () => resolve(dataUrl);
+      image.src = dataUrl;
+    });
+  }
   function rememberMediaPair(owner, dataUrl, ref) {
     if (!isDataMedia(dataUrl) || !isRemoteMediaRef(ref)) return;
     const refs = readMediaRefCache();
@@ -361,7 +406,7 @@ globalThis.AM_CLOUD_SYNC = (() => {
     }
     if(removedRefs)writeMediaRefCache(refs);
     let removedMemory=0;
-    for(const scope of scopes){if(invoiceCache.delete(scope))removedMemory+=1;if(photoCache.delete(scope))removedMemory+=1;}
+    for(const scope of scopes){if(invoiceCache.delete(scope))removedMemory+=1;if(photoCache.delete(scope))removedMemory+=1;if(thumbnailCache.delete(scope))removedMemory+=1;thumbnailStateCache.delete(scope);}
     try{window.AM_V4_DATA?.purgeLocalReceptionResidue?.(item);}catch{}
     let removedCacheStorage=0;
     if(globalThis.caches&&fileIds.size){
@@ -491,26 +536,224 @@ globalThis.AM_CLOUD_SYNC = (() => {
       if (cached) dataMap.set(fileId, cached);
       else missing.push(item);
     }
-    const chunkSize = 24;
+    const chunkSize = 18;
     for (let i = 0; i < missing.length; i += chunkSize) {
       const chunk = missing.slice(i, i + chunkSize);
-      let result;
-      try { result = await request('loadMediaBatch', { items: chunk }); }
-      catch {
-        // Compatibilidad defensiva: si un lote excepcionalmente grande falla, se divide.
-        result = { items: [] };
+      let result = { items: [] };
+      try {
+        result = await request('loadMediaBatch', { items: chunk });
+      } catch (batchError) {
+        // V4.18: una fotografía corrupta o ausente jamás puede abortar el workspace.
+        // Se intenta cada elemento por separado y se conserva el resto del lote.
         for (const item of chunk) {
-          const single = await request('loadMedia', { id: item.id, media: item.media });
-          result.items.push({ key: item.key, media: single.media });
+          try {
+            const single = await request('loadMedia', { id: item.id, media: item.media });
+            result.items.push({ key: item.key, media: single.media });
+          } catch (singleError) {
+            console.warn('Media omitido durante carga visual', item?.media?.fileId || item?.media?.path || '', singleError);
+          }
         }
       }
       for (const item of (result.items || [])) {
         const fileId = String(item.key || item.media?.fileId || '');
         const url = item.media?.dataUrl || '';
-        if (fileId && url) { dataMap.set(fileId, url); await mediaDataCacheSet(fileId, url); }
+        if (fileId && url) {
+          dataMap.set(fileId, url);
+          await mediaDataCacheSet(fileId, url);
+        }
       }
     }
     return receptions.map(rec => replaceRefsFromMap(rec, dataMap, rec));
+  }
+
+  function receptionVisualKey(rec) {
+    return String(rec?.number || rec?.id || rec?._storage?.folderId || '');
+  }
+  function dispatchMediaReady(kind, rec) {
+    try {
+      window.dispatchEvent(new CustomEvent('am-cloud-media-ready', { detail: { kind, id: rec?.id || '', number: rec?.number || '' } }));
+    } catch {}
+  }
+  function thumbnailCacheKeys(rec) {
+    const out = allItemKeys(rec);
+    const canonical = receptionVisualKey(rec);
+    if (canonical && !out.includes(canonical)) out.push(canonical);
+    return out;
+  }
+  function photoLabelKey(value) {
+    return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  }
+  function frontPhotoEntry(rec) {
+    const photos = Array.isArray(rec?.photos) ? rec.photos : [];
+    return photos.find(photo => photoLabelKey(photo?.label) === 'frente') || photos[0] || null;
+  }
+  function setThumbnail(rec, dataUrl, status = 'ready') {
+    const src = String(dataUrl || '');
+    for (const key of thumbnailCacheKeys(rec)) {
+      if (src) thumbnailCache.set(key, src);
+      else thumbnailCache.delete(key);
+      thumbnailStateCache.set(key, status);
+    }
+    return src;
+  }
+  function cachedThumbnail(rec) {
+    for (const key of thumbnailCacheKeys(rec)) {
+      const src = thumbnailCache.get(key);
+      if (src) return src;
+    }
+    return '';
+  }
+  function thumbnailStatus(rec) {
+    if (cachedThumbnail(rec)) return 'ready';
+    const front = frontPhotoEntry(rec);
+    if (!front?.dataUrl) return 'missing';
+    for (const key of thumbnailCacheKeys(rec)) {
+      const status = thumbnailStateCache.get(key);
+      if (status) return status;
+    }
+    return 'loading';
+  }
+  async function ensureReceptionThumbnail(rec) {
+    if (!rec) return '';
+    const ready = cachedThumbnail(rec);
+    if (ready) return ready;
+    const front = frontPhotoEntry(rec);
+    if (!front?.dataUrl) {
+      setThumbnail(rec, '', 'missing');
+      dispatchMediaReady('thumbnail', rec);
+      return '';
+    }
+    const media = front.dataUrl;
+    const key = `thumb:${receptionVisualKey(rec)}`;
+    if (Date.now() < Number(mediaRetryAfter.get(key) || 0)) return '';
+    if (mediaPrimeInFlight.has(key)) return mediaPrimeInFlight.get(key);
+    for (const cacheKey of thumbnailCacheKeys(rec)) thumbnailStateCache.set(cacheKey, 'loading');
+    const task = (async () => {
+      try {
+        let full = '';
+        let fileId = '';
+        if (typeof media === 'string') {
+          full = media;
+        } else if (isRemoteMediaRef(media)) {
+          fileId = String(media.fileId || '');
+          if (fileId) {
+            const cachedThumb = await thumbnailDataCacheGet(fileId);
+            if (cachedThumb) {
+              setThumbnail(rec, cachedThumb, 'ready');
+              mediaRetryAfter.delete(key);
+              dispatchMediaReady('thumbnail', rec);
+              return cachedThumb;
+            }
+            full = await mediaDataCacheGet(fileId);
+          }
+          if (!full) {
+            const result = await request('loadMedia', { id: rec.id || rec.number, media });
+            full = result?.media?.dataUrl || '';
+          }
+        }
+        if (!full) throw new Error('La fotografía frontal no está disponible.');
+        const thumb = await makeThumbnailDataUrl(full);
+        if (!thumb) throw new Error('No se pudo preparar la miniatura.');
+        if (fileId) await thumbnailDataCacheSet(fileId, thumb);
+        setThumbnail(rec, thumb, 'ready');
+        mediaRetryAfter.delete(key);
+        dispatchMediaReady('thumbnail', rec);
+        return thumb;
+      } catch (error) {
+        mediaRetryAfter.set(key, Date.now() + 30000);
+        setThumbnail(rec, '', 'error');
+        dispatchMediaReady('thumbnail', rec);
+        console.warn('No se pudo cargar miniatura de recepción', rec?.number || rec?.id || '', error);
+        return '';
+      } finally {
+        mediaPrimeInFlight.delete(key);
+      }
+    })();
+    mediaPrimeInFlight.set(key, task);
+    return task;
+  }
+  async function primeReceptionThumbnails(receptions) {
+    const queue = Array.isArray(receptions) ? receptions.slice() : [];
+    const workers = Math.min(4, queue.length);
+    let cursor = 0;
+    async function worker() {
+      while (cursor < queue.length) {
+        const rec = queue[cursor++];
+        await ensureReceptionThumbnail(rec);
+      }
+    }
+    await Promise.all(Array.from({ length: workers }, worker));
+    return true;
+  }
+
+  async function ensureReceptionPhotos(rec) {
+    if (!rec) return [];
+    const existing = cachedPhotos(rec);
+    if (Array.isArray(existing) && existing.some(p => typeof p?.dataUrl === 'string' && p.dataUrl)) return existing;
+    const refs = Array.isArray(rec.photos) ? rec.photos : [];
+    if (!refs.some(p => isRemoteMediaRef(p?.dataUrl))) return refs;
+    const key = `photos:${receptionVisualKey(rec)}`;
+    if (Date.now() < Number(mediaRetryAfter.get(key) || 0)) return refs;
+    if (mediaPrimeInFlight.has(key)) return mediaPrimeInFlight.get(key);
+    const task = (async () => {
+      try {
+        const [hydrated] = await hydrateWorkspaceMedia([{ ...clone(rec, {}), invoices: [], damages: [], updates: [], pendingTracking: null, adminTrackingDraft: null }]);
+        const photos = Array.isArray(hydrated?.photos) ? hydrated.photos : [];
+        cachePhotos(rec, photos, { persist: false });
+        mediaRetryAfter.delete(key);
+        dispatchMediaReady('photos', rec);
+        return photos;
+      } catch (error) {
+        mediaRetryAfter.set(key, Date.now() + 30000);
+        console.warn('No se pudieron cargar fotografías visuales', rec?.number || rec?.id || '', error);
+        return [];
+      } finally {
+        mediaPrimeInFlight.delete(key);
+      }
+    })();
+    mediaPrimeInFlight.set(key, task);
+    return task;
+  }
+  async function ensureReceptionInvoices(rec) {
+    if (!rec) return [];
+    const existing = cachedInvoices(rec);
+    if (Array.isArray(existing) && existing.some(p => typeof p?.dataUrl === 'string' && p.dataUrl)) return existing;
+    const refs = Array.isArray(rec.invoices) ? rec.invoices : [];
+    if (!refs.some(p => isRemoteMediaRef(p?.dataUrl))) return refs;
+    const key = `invoices:${receptionVisualKey(rec)}`;
+    if (Date.now() < Number(mediaRetryAfter.get(key) || 0)) return refs;
+    if (mediaPrimeInFlight.has(key)) return mediaPrimeInFlight.get(key);
+    const task = (async () => {
+      try {
+        const [hydrated] = await hydrateWorkspaceMedia([{ id: rec.id, number: rec.number, _storage: rec._storage, photos: [], invoices: clone(refs, []) }]);
+        const invoices = Array.isArray(hydrated?.invoices) ? hydrated.invoices : [];
+        cacheInvoices(rec, invoices, { persist: false });
+        mediaRetryAfter.delete(key);
+        dispatchMediaReady('invoices', rec);
+        return invoices;
+      } catch (error) {
+        mediaRetryAfter.set(key, Date.now() + 30000);
+        console.warn('No se pudieron cargar facturas visuales', rec?.number || rec?.id || '', error);
+        return [];
+      } finally {
+        mediaPrimeInFlight.delete(key);
+      }
+    })();
+    mediaPrimeInFlight.set(key, task);
+    return task;
+  }
+  async function primeReceptionPhotos(receptions) {
+    const queue = (Array.isArray(receptions) ? receptions : []).filter(rec => Array.isArray(rec?.photos) && rec.photos.some(p => isRemoteMediaRef(p?.dataUrl)));
+    const workers = Math.min(3, queue.length);
+    let cursor = 0;
+    async function worker() {
+      while (cursor < queue.length) {
+        const rec = queue[cursor++];
+        await ensureReceptionPhotos(rec);
+      }
+    }
+    await Promise.all(Array.from({ length: workers }, worker));
+    return true;
   }
 
   function markReceptionMediaRefs(value, receptionId) {
@@ -532,25 +775,13 @@ globalThis.AM_CLOUD_SYNC = (() => {
       nextReceptionNumber: workspace.nextReceptionNumber, expedientes: entries
     };
 
-    // IMPORTANTE V4.17: mantenemos dos árboles distintos.
-    // remoteReceptions conserva las referencias pequeñas de Drive y es lo único que
-    // se persiste localmente. visualReceptions contiene dataUrl solo para renderizar.
+    // V4.18: el workspace se aplica INMEDIATAMENTE con referencias Drive pequeñas.
+    // Las imágenes son una mejora visual asíncrona: jamás bloquean ni ponen el dashboard en cero.
     let remoteReceptions = Array.isArray(workspace.expedientes) ? clone(workspace.expedientes, []) : [];
     const local = window.AM_V4_DATA?.readAdminState?.() || {};
 
-    let visualReceptions = clone(remoteReceptions, []);
-    if (options.hydrateMedia !== false) visualReceptions = await hydrateWorkspaceMedia(visualReceptions);
-    visualReceptions.forEach(rec => {
-      if (Array.isArray(rec.photos) && rec.photos.some(p => typeof p?.dataUrl === 'string' && p.dataUrl)) {
-        cachePhotos(rec, rec.photos, { persist: false });
-      }
-      // Las facturas hidratadas viven en memoria/CacheStorage; expediente.json conserva refs Drive.
-      if (Array.isArray(rec.invoices)) cacheInvoices(rec, rec.invoices, { persist: false });
-    });
-
-    // Solo después de confirmar que la nube y sus medios pudieron cargarse, liberamos
-    // residuos V4.16 de expedientes que ya tienen copia autoritativa en Drive.
-    // Así una falla de red nunca destruye el último estado local visible.
+    // Liberar únicamente residuos locales de expedientes ya confirmados por Drive.
+    // Esto no toca Drive ni elimina CacheStorage visual compartido.
     for (const remote of remoteReceptions) {
       try { window.AM_V4_DATA?.purgeLocalReceptionResidue?.(remote); } catch {}
     }
@@ -559,8 +790,6 @@ globalThis.AM_CLOUD_SYNC = (() => {
     const currentSession = session();
     if (currentSession?.role === 'employee') {
       const employeeId = cleanEmployeeId(currentSession.employeeId);
-      // Otros expedientes locales se conservan solo como metadatos; nunca arrastramos
-      // blobs base64 antiguos de otro técnico al almacenamiento del navegador.
       const preserved = (local.receptions || [])
         .filter(rec => cleanEmployeeId(rec.employeeId) !== employeeId)
         .map(rec => stripEmbeddedMedia(rec));
@@ -576,6 +805,12 @@ globalThis.AM_CLOUD_SYNC = (() => {
     const snap = { version: 4, exportedAt: workspace.updatedAt || new Date().toISOString(), appState, employeeState: null, archives: { master: {}, quick: {} } };
     lastSnapshot = clone(snap, snap);
     applySnapshot(snap);
+
+    // No esperamos fotografías para entregar el workspace. Se cargan en segundo plano
+    // con concurrencia limitada y errores aislados por expediente.
+    if (options.hydrateMedia !== false) {
+      setTimeout(() => { primeReceptionThumbnails(remoteReceptions).catch(error => console.warn('Carga visual de miniaturas incompleta', error)); }, 0);
+    }
     return snap;
   }
 
@@ -997,9 +1232,9 @@ globalThis.AM_CLOUD_SYNC = (() => {
     ping, request, loginAdmin, loginEmployee, logout, configureCredentials,
     snapshot, saveNow, saveReceptionNow, queueSave, fetchLatest, applySnapshot, loadLatest, ready,
     enqueueBackgroundSave, processBackgroundOutbox, retryBackgroundSave, backgroundStatus,
-    cacheInvoices, cachedInvoices, clearInvoiceCache, cachePhotos, cachedPhotos, forgetMediaRefs, purgeLocalReceptionCaches,
+    cacheInvoices, cachedInvoices, clearInvoiceCache, cachePhotos, cachedPhotos, cachedThumbnail, thumbnailStatus, ensureReceptionThumbnail, ensureReceptionPhotos, ensureReceptionInvoices, forgetMediaRefs, purgeLocalReceptionCaches,
     loadIndex, loadReception, archiveReception, trashReception, restoreReception, activateReception, pruneMedia, purgeReception,
     publicClient, publicTracking, publicAuthorize, publicAcknowledgePhotos, publicConfirmTrackingRequest, loadPublicSnapshot,
-    _integrationStage: 'stage4.17-github-ready', _build: BUILD
+    _integrationStage: 'stage4.18-integrity', _build: BUILD
   };
 })();

@@ -1,10 +1,10 @@
-# Automotriz Medina V4.17
+# Automotriz Medina V4.18.1
 
 Frontend estático preparado para GitHub Pages.
 
 - No contiene el código privado de Google Apps Script.
 - No contiene BAT, PowerShell, diagnósticos ni archivos históricos de pruebas.
-- El backend se administra por separado y debe responder con `backendBuild: v4-stage4.10-2026-10-03`.
+- El backend se administra por separado y debe responder con `backendBuild: v4-stage4.18-integrity-2026-10-06`.
 - Las sesiones recordadas permanecen activas en el navegador.
 - Alertzy permanece habilitado y el aviso de vehículo finalizado se envía directamente desde el navegador.
 - Incluye botón ↻ Recargar en ADMIN y empleado para forzar la actualización de la PWA.
@@ -37,3 +37,26 @@ Antes de publicar, la validación automática del repositorio debe finalizar cor
 - Los medios confirmados en nube permanecen como referencias Drive en el estado local; las imágenes hidratadas viven solo en memoria/Cache Storage.
 - Migra automáticamente residuos V4.16 de expedientes ya confirmados en Drive sin borrar datos del servidor.
 - Un fallo de cache local ya no puede dejar ADMIN o empleado con dashboard vacío.
+
+
+## V4.18 — Integridad y carga progresiva
+
+### Miniaturas progresivas en ADMIN y empleados
+- ADMIN y los módulos de empleados cargan primero los datos del expediente y solicitan únicamente la fotografía frontal como miniatura.
+- La miniatura se reduce localmente y se guarda en Cache Storage por `fileId`; las fotografías completas se descargan solo al abrir el expediente o una imagen concreta.
+- Escritorio y móvil reservan siempre un espacio de miniatura. Mientras carga se muestra un esqueleto; si el expediente realmente no tiene fotografía se indica `Sin fotografía` en lugar de ocultar el vehículo.
+- Un fallo individual de miniatura no puede poner el dashboard en cero ni impedir cargar otros expedientes.
+
+- El Dashboard aplica primero los datos del workspace; las fotografías cargan después sin bloquear la lista de vehículos.
+- Una fotografía ausente o lenta no puede dejar ADMIN o empleado en cero.
+- El módulo de empleado conserva referencias Drive existentes y nunca las reemplaza por cadenas vacías al liberar caché visual.
+- La hidratación visual de fotografías usa concurrencia limitada; las facturas se cargan bajo demanda.
+- Incluye `recuperar-cache.html`, herramienta de solo lectura para intentar recuperar medios que aún sobrevivan en el navegador.
+- Requiere backend V4.18 para la protección definitiva contra borrado físico accidental de medios.
+
+## V4.18.1 — Experiencia de carga
+- Misma protección de integridad del backend V4.18.
+- Dashboard ADMIN y empleado: solo precarga una miniatura frontal por expediente.
+- Las fotografías completas, tarjetas y facturas se cargan al abrirlas.
+- Móvil y escritorio comparten el mismo comportamiento.
+- Se actualizó el cache-busting de recursos para impedir que GitHub Pages reutilice JavaScript antiguo.

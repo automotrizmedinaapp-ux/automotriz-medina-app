@@ -190,6 +190,31 @@
       };
     });
   }
+  function isRemoteMediaRefLocal(value) {
+    return !!(value && typeof value === 'object' && value.__amMediaFile === true && (value.fileId || value.path));
+  }
+  function mergeReceptionPhotos(existingPhotos, incomingPhotos, express = false) {
+    const existing = Array.isArray(existingPhotos) ? existingPhotos : [];
+    const incoming = Array.isArray(incomingPhotos) ? incomingPhotos : [];
+    const byLabel = new Map(existing.map((p, i) => [photoKey(p?.label || `#${i}`), p]));
+    const merged = incoming.map((photo, i) => {
+      const next = clone(photo, {}) || {};
+      const prior = byLabel.get(photoKey(next.label || `#${i}`)) || existing[i] || null;
+      const emptyIncoming = next.dataUrl === '' || next.dataUrl == null;
+      if (emptyIncoming && prior?.dataUrl && (isRemoteMediaRefLocal(prior.dataUrl) || isMediaData(prior.dataUrl))) {
+        next.dataUrl = clone(prior.dataUrl, prior.dataUrl);
+      }
+      return next;
+    });
+    // Fotografías principales ya confirmadas no desaparecen por una copia parcial del empleado.
+    // Una eliminación real de medios se realiza por una acción explícita, no por ausencia accidental.
+    for (const prior of existing) {
+      const key = photoKey(prior?.label);
+      if (prior?.dataUrl && !merged.some(p => photoKey(p?.label) === key)) merged.push(clone(prior, prior));
+    }
+    return express ? merged : normalizeMainPhotos(merged);
+  }
+
   function normalizeReception(input) {
     const rec = clone(input, {}) || {};
     if (!rec.id) rec.id = `emp-v4-${Date.now()}-${token().slice(0, 6)}`;
@@ -360,10 +385,15 @@
     const current = readCatalog();
     const incoming = state && typeof state === 'object' ? state : {};
     const receptions = (Array.isArray(incoming.receptions) ? incoming.receptions : []).map(normalizeReception);
-    const existingNumbers = new Set((current.receptionOrder || []).map(id => String(readReceptionById(id)?.number || '').trim()).filter(Boolean));
+    const currentReceptions = (current.receptionOrder || []).map(id => readReceptionById(id)).filter(Boolean);
+    const existingNumbers = new Set(currentReceptions.map(rec => String(rec?.number || '').trim()).filter(Boolean));
+    const existingByNumber = new Map(currentReceptions.map(rec => [String(rec?.number || '').trim(), rec]));
+    const existingById = new Map(currentReceptions.map(rec => [String(rec?.id || '').trim(), rec]));
     const order = [];
     for (const source of receptions) {
       const number = String(source.number || '').trim();
+      const prior = existingByNumber.get(number) || existingById.get(String(source.id || '').trim()) || null;
+      if (prior && Array.isArray(source.photos)) source.photos = mergeReceptionPhotos(prior.photos, source.photos, !!source.express);
       const isNewReceptionNumber = !!number && !existingNumbers.has(number);
       // V4.16: un número reutilizado empieza con cache de facturas limpio.
       // La cache es solo una ayuda visual, nunca una fuente de datos para una recepción nueva.
@@ -453,7 +483,7 @@
     rec.serviceReason = v.motivo ?? rec.serviceReason ?? '';
     rec.observations = v.observaciones ?? rec.observations ?? '';
     rec.vehicle = { ...(rec.vehicle || {}), marca: v.marca || '', modelo: v.modelo || '', anio: v.anio || '', color: v.color || '', placa: v.placa || '', vin: v.vin || '', kilometraje: v.odometro || '', kilometrajeUnidad: v.unidad || 'mi' };
-    if (Array.isArray(v.photos)) rec.photos = v.express ? clone(v.photos, []) : normalizeMainPhotos(v.photos);
+    if (Array.isArray(v.photos)) rec.photos = mergeReceptionPhotos(rec.photos, v.photos, !!v.express);
     if (Array.isArray(v.inventory)) rec.inventory = clone(v.inventory, []);
     if (Array.isArray(v.damages)) rec.damages = clone(v.damages, []);
     if (Array.isArray(v.invoices)) rec.invoices = clone(v.invoices, []);
