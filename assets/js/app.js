@@ -3877,6 +3877,13 @@ document.addEventListener("click", async (event) => {
 let adminMediaRenderTimer = 0;
 window.addEventListener("am-cloud-media-ready", (event) => {
   if (document.body?.dataset.page !== "admin") return;
+  if (event?.detail?.kind === "invoices") {
+    const rec = state().receptions.find(item =>
+      (event.detail.id && item.id === event.detail.id) ||
+      (event.detail.number && item.number === event.detail.number)
+    );
+    if (rec) adminInvoiceDrafts.delete(rec.id);
+  }
   clearTimeout(adminMediaRenderTimer);
   adminMediaRenderTimer = setTimeout(() => {
     try {
@@ -5394,10 +5401,12 @@ function renderAdminInvoices() {
   host.innerHTML = invoices.map((item, index) => {
     const label = item.label || `Factura ${index + 1}`;
     const src = item.dataUrl || "";
+    const rawRef = Array.isArray(rec.invoices) ? rec.invoices[index]?.dataUrl : null;
+    const pendingRemote = !src && !!(rawRef && typeof rawRef === "object");
     return `
       <article class="invoice-card">
         <button type="button" class="photo-box ${src ? "has-image" : ""}" data-action="open-image-preview-direct" data-src="${esc(src)}" data-label="${esc(label)}" style="${src ? `background-image:url('${src}')` : ""}">
-          ${src ? "" : "Sin imagen"}
+          ${src ? "" : (pendingRemote ? "Cargando imagen…" : "Sin imagen")}
         </button>
         <input type="text" data-admin-invoice-label="${index}" value="${esc(label)}" aria-label="Nombre de factura">
         <button type="button" class="btn danger" data-action="remove-admin-invoice" data-index="${index}">Eliminar factura</button>
@@ -5407,17 +5416,26 @@ function renderAdminInvoices() {
 
 function adminInvoiceList(rec) {
   if (!rec) return [];
+  // V4.18.2: el cache hidratado de Drive siempre tiene prioridad sobre un borrador
+  // visual vacío creado mientras la factura todavía estaba descargándose.
+  const cloud = globalThis.AM_CLOUD_SYNC?.cachedInvoices?.(rec);
+  if (Array.isArray(cloud)) {
+    const hydrated = JSON.parse(JSON.stringify(cloud || [])).map((item) => ({
+      ...item, dataUrl: typeof item?.dataUrl === 'string' ? item.dataUrl : ''
+    }));
+    adminInvoiceDrafts.set(rec.id, hydrated);
+    return hydrated;
+  }
+  const remotePending = (rec.invoices || []).some(item => item?.dataUrl && typeof item.dataUrl === 'object');
   if (adminInvoiceDrafts.has(rec.id)) {
     const draft = adminInvoiceDrafts.get(rec.id);
     const poisoned = Array.isArray(draft) && draft.some(item => item?.dataUrl && typeof item.dataUrl === 'object');
-    if (!poisoned) return draft;
+    const hasRenderableImage = Array.isArray(draft) && draft.some(item => typeof item?.dataUrl === 'string' && item.dataUrl);
+    if (!poisoned && (!remotePending || hasRenderableImage)) return draft;
     adminInvoiceDrafts.delete(rec.id);
   }
-  const cloud = globalThis.AM_CLOUD_SYNC?.cachedInvoices?.(rec);
-  if (!Array.isArray(cloud) && (rec.invoices || []).some(item => item?.dataUrl && typeof item.dataUrl === 'object')) {
-    globalThis.AM_CLOUD_SYNC?.ensureReceptionInvoices?.(rec).catch(() => {});
-  }
-  const initial = Array.isArray(cloud) ? cloud : (Array.isArray(rec.invoices) ? rec.invoices : []);
+  if (remotePending) globalThis.AM_CLOUD_SYNC?.ensureReceptionInvoices?.(rec).catch(() => {});
+  const initial = Array.isArray(rec.invoices) ? rec.invoices : [];
   const list = JSON.parse(JSON.stringify(initial || [])).map((item) => ({
     ...item, dataUrl: typeof item?.dataUrl === 'string' ? item.dataUrl : ''
   }));

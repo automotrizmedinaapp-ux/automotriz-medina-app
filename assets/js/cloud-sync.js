@@ -7,7 +7,7 @@
 globalThis.AM_CLOUD_SYNC = (() => {
   'use strict';
 
-  const BUILD = 'v4-stage4.18-integrity-2026-10-06';
+  const BUILD = 'v4-stage4.18.2-invoices-2026-10-07';
   const DRIVE_REQUIRED = true;
   const CONFIG_KEY = 'am_v4_sync_config_v2';
   const SESSIONS_KEY = 'am_v4_backend_device_sessions_v2';
@@ -1118,9 +1118,9 @@ globalThis.AM_CLOUD_SYNC = (() => {
       return clone(Array.isArray(existing) ? existing : [], []);
     }
     for (const k of keys(item)) invoiceCache.set(k, list);
-    // V4.17: las imágenes descargadas desde Drive se mantienen en memoria/CacheStorage.
-    // No duplicarlas en localStorage evita agotar su cuota y bloquear toda la carga.
-    if (options.persist !== false) window.AM_V4_DATA?.setAux?.('invoices', item, list);
+    // V4.18.2: las facturas visuales viven en memoria/CacheStorage, nunca en localStorage.
+    // Esto evita reintroducir el problema de cuota que V4.17 eliminó para los medios remotos.
+    window.AM_V4_DATA?.clearAux?.('invoices', item);
     return clone(list, []);
   }
   function cachedInvoices(item) {
@@ -1130,11 +1130,9 @@ globalThis.AM_CLOUD_SYNC = (() => {
       if (!invoiceListContainsRemoteRefs(list)) return clone(list, []);
       invoiceCache.delete(k);
     }
-    const aux = window.AM_V4_DATA?.getAux?.('invoices', item);
-    if (Array.isArray(aux) && !invoiceListContainsRemoteRefs(aux)) {
-      for (const k of keys(item)) invoiceCache.set(k, aux);
-      return clone(aux, []);
-    }
+    // Auxiliares heredados de versiones anteriores pueden contener imágenes grandes o
+    // estados visuales viejos. Se descartan; Drive + CacheStorage son la fuente visual.
+    window.AM_V4_DATA?.clearAux?.('invoices', item);
     return null;
   }
   function clearInvoiceCache(item) {

@@ -1,4 +1,4 @@
-# Automotriz Medina V4.18.1
+# Automotriz Medina V4.18.3
 
 Frontend estático preparado para GitHub Pages.
 
@@ -60,3 +60,16 @@ Antes de publicar, la validación automática del repositorio debe finalizar cor
 - Las fotografías completas, tarjetas y facturas se cargan al abrirlas.
 - Móvil y escritorio comparten el mismo comportamiento.
 - Se actualizó el cache-busting de recursos para impedir que GitHub Pages reutilice JavaScript antiguo.
+
+
+## V4.18.2 — Facturas visibles tras recarga
+- Corrige un borrador visual vacío que podía ocultar una factura ya guardada correctamente en Drive.
+- ADMIN y Empleados priorizan siempre el cache hidratado de Drive cuando queda disponible.
+- Mientras la imagen remota se descarga se muestra `Cargando imagen…`, no `Sin imagen`.
+- Las facturas visuales ya no se duplican en localStorage; permanecen en memoria/CacheStorage.
+- No requiere cambios adicionales en Apps Script: usa el backend V4.18 de integridad.
+
+
+## V4.18.3 — Avance oculto para técnicos
+
+En el módulo de empleados, la barra y porcentaje de avance ya no se muestran en Seguimiento. El valor interno se conserva para compatibilidad con ADMIN, publicación y finalización; no se modifica backend ni Drive.
