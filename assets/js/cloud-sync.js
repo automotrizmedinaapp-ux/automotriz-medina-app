@@ -7,7 +7,7 @@
 globalThis.AM_CLOUD_SYNC = (() => {
   'use strict';
 
-  const BUILD = 'v4-stage4.18.2-invoices-2026-10-07';
+  const BUILD = 'v4-stage4.18.4-cards-2026-10-09';
   const DRIVE_REQUIRED = true;
   const CONFIG_KEY = 'am_v4_sync_config_v2';
   const SESSIONS_KEY = 'am_v4_backend_device_sessions_v2';
@@ -21,6 +21,11 @@ globalThis.AM_CLOUD_SYNC = (() => {
   const photoCache = new Map();
   const thumbnailCache = new Map();
   const thumbnailStateCache = new Map();
+  const receptionPhotoThumbnailCache = new Map();
+  const receptionPhotoThumbnailStateCache = new Map();
+  const receptionPhotoThumbnailQueue = [];
+  const receptionPhotoThumbnailQueued = new Set();
+  let receptionPhotoThumbnailWorkers = 0;
   const mediaPrimeInFlight = new Map();
   const mediaRetryAfter = new Map();
   let saveTail = Promise.resolve();
@@ -406,7 +411,14 @@ globalThis.AM_CLOUD_SYNC = (() => {
     }
     if(removedRefs)writeMediaRefCache(refs);
     let removedMemory=0;
-    for(const scope of scopes){if(invoiceCache.delete(scope))removedMemory+=1;if(photoCache.delete(scope))removedMemory+=1;if(thumbnailCache.delete(scope))removedMemory+=1;thumbnailStateCache.delete(scope);}
+    for(const scope of scopes){
+      if(invoiceCache.delete(scope))removedMemory+=1;
+      if(photoCache.delete(scope))removedMemory+=1;
+      if(thumbnailCache.delete(scope))removedMemory+=1;
+      thumbnailStateCache.delete(scope);
+      for(const key of [...receptionPhotoThumbnailCache.keys()]){if(key.startsWith(`${scope}|photo:`)){receptionPhotoThumbnailCache.delete(key);removedMemory+=1;}}
+      for(const key of [...receptionPhotoThumbnailStateCache.keys()]){if(key.startsWith(`${scope}|photo:`))receptionPhotoThumbnailStateCache.delete(key);}
+    }
     try{window.AM_V4_DATA?.purgeLocalReceptionResidue?.(item);}catch{}
     let removedCacheStorage=0;
     if(globalThis.caches&&fileIds.size){
@@ -583,6 +595,61 @@ globalThis.AM_CLOUD_SYNC = (() => {
   function photoLabelKey(value) {
     return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
   }
+  function photoLabelTargets(value) {
+    const key = photoLabelKey(value);
+    const aliasMap = {
+      'frente': ['frente'],
+      'tarjeta frente': ['tarjeta frente', 'frente tarjeta', 'frente de tarjeta'],
+      'frente tarjeta': ['tarjeta frente', 'frente tarjeta', 'frente de tarjeta'],
+      'frente de tarjeta': ['tarjeta frente', 'frente tarjeta', 'frente de tarjeta'],
+      'tarjeta reverso': ['tarjeta reverso', 'reverso tarjeta', 'reverso de tarjeta'],
+      'reverso tarjeta': ['tarjeta reverso', 'reverso tarjeta', 'reverso de tarjeta'],
+      'reverso de tarjeta': ['tarjeta reverso', 'reverso tarjeta', 'reverso de tarjeta']
+    };
+    return new Set(aliasMap[key] || [key]);
+  }
+  function receptionPhotoIndex(rec, label) {
+    const photos = Array.isArray(rec?.photos) ? rec.photos : [];
+    const targets = photoLabelTargets(label);
+    return photos.findIndex(photo => targets.has(photoLabelKey(photo?.label)));
+  }
+  function cachedReceptionPhoto(rec, label) {
+    const index = receptionPhotoIndex(rec, label);
+    if (index < 0) return '';
+    const list = cachedPhotos(rec);
+    const entry = Array.isArray(list) ? list[index] : null;
+    return typeof entry?.dataUrl === 'string' ? entry.dataUrl : '';
+  }
+  function photoThumbnailCacheKeys(rec, label) {
+    const suffix = photoLabelKey(label);
+    return thumbnailCacheKeys(rec).map(key => `${key}|photo:${suffix}`);
+  }
+  function setReceptionPhotoThumbnail(rec, label, dataUrl, status = 'ready') {
+    const src = String(dataUrl || '');
+    for (const key of photoThumbnailCacheKeys(rec, label)) {
+      if (src) receptionPhotoThumbnailCache.set(key, src);
+      else receptionPhotoThumbnailCache.delete(key);
+      receptionPhotoThumbnailStateCache.set(key, status);
+    }
+    return src;
+  }
+  function cachedReceptionPhotoThumbnail(rec, label) {
+    for (const key of photoThumbnailCacheKeys(rec, label)) {
+      const src = receptionPhotoThumbnailCache.get(key);
+      if (src) return src;
+    }
+    return '';
+  }
+  function receptionPhotoThumbnailStatus(rec, label) {
+    if (cachedReceptionPhotoThumbnail(rec, label)) return 'ready';
+    const index = receptionPhotoIndex(rec, label);
+    if (index < 0 || !rec?.photos?.[index]?.dataUrl) return 'missing';
+    for (const key of photoThumbnailCacheKeys(rec, label)) {
+      const status = receptionPhotoThumbnailStateCache.get(key);
+      if (status) return status;
+    }
+    return 'loading';
+  }
   function frontPhotoEntry(rec) {
     const photos = Array.isArray(rec?.photos) ? rec.photos : [];
     return photos.find(photo => photoLabelKey(photo?.label) === 'frente') || photos[0] || null;
@@ -686,12 +753,136 @@ globalThis.AM_CLOUD_SYNC = (() => {
     return true;
   }
 
+  async function ensureReceptionPhoto(rec, label) {
+    if (!rec) return '';
+    const refs = Array.isArray(rec.photos) ? rec.photos : [];
+    const index = receptionPhotoIndex(rec, label);
+    if (index < 0) return '';
+    const cached = cachedReceptionPhoto(rec, label);
+    if (cached) return cached;
+    const media = refs[index]?.dataUrl;
+    if (typeof media === 'string') return media;
+    if (!isRemoteMediaRef(media)) return '';
+    const fileId = String(media.fileId || '');
+    const key = `photo:${receptionVisualKey(rec)}:${fileId || photoLabelKey(label)}`;
+    if (Date.now() < Number(mediaRetryAfter.get(key) || 0)) return '';
+    if (mediaPrimeInFlight.has(key)) return mediaPrimeInFlight.get(key);
+    const task = (async () => {
+      try {
+        let full = fileId ? await mediaDataCacheGet(fileId) : '';
+        if (!full) {
+          const result = await request('loadMedia', { id: rec.id || rec.number, media });
+          full = result?.media?.dataUrl || '';
+        }
+        if (!full) throw new Error(`La fotografía ${label || ''} no está disponible.`);
+        if (fileId) await mediaDataCacheSet(fileId, full);
+        rememberMediaPair(rec, full, media);
+        const existing = cachedPhotos(rec);
+        const merged = refs.map((photo, photoIndex) => {
+          const next = clone(photo, {}) || {};
+          const cachedEntry = Array.isArray(existing) ? existing[photoIndex] : null;
+          if (photoIndex === index) next.dataUrl = full;
+          else if (typeof cachedEntry?.dataUrl === 'string' && cachedEntry.dataUrl) next.dataUrl = cachedEntry.dataUrl;
+          return next;
+        });
+        cachePhotos(rec, merged, { persist: false });
+        mediaRetryAfter.delete(key);
+        dispatchMediaReady('photo', rec);
+        return full;
+      } catch (error) {
+        mediaRetryAfter.set(key, Date.now() + 15000);
+        console.warn('No se pudo cargar fotografía individual', rec?.number || rec?.id || '', label || '', error);
+        return '';
+      } finally {
+        mediaPrimeInFlight.delete(key);
+      }
+    })();
+    mediaPrimeInFlight.set(key, task);
+    return task;
+  }
+  async function ensureReceptionPhotoThumbnail(rec, label) {
+    if (!rec) return '';
+    const ready = cachedReceptionPhotoThumbnail(rec, label);
+    if (ready) return ready;
+    const index = receptionPhotoIndex(rec, label);
+    if (index < 0 || !rec?.photos?.[index]?.dataUrl) {
+      setReceptionPhotoThumbnail(rec, label, '', 'missing');
+      dispatchMediaReady('photo-thumbnail', rec);
+      return '';
+    }
+    const media = rec.photos[index].dataUrl;
+    const fileId = isRemoteMediaRef(media) ? String(media.fileId || '') : '';
+    const key = `photo-thumb:${receptionVisualKey(rec)}:${fileId || photoLabelKey(label)}`;
+    if (Date.now() < Number(mediaRetryAfter.get(key) || 0)) return '';
+    if (mediaPrimeInFlight.has(key)) return mediaPrimeInFlight.get(key);
+    for (const cacheKey of photoThumbnailCacheKeys(rec, label)) receptionPhotoThumbnailStateCache.set(cacheKey, 'loading');
+    const task = (async () => {
+      try {
+        if (fileId) {
+          const cachedThumb = await thumbnailDataCacheGet(fileId);
+          if (cachedThumb) {
+            setReceptionPhotoThumbnail(rec, label, cachedThumb, 'ready');
+            mediaRetryAfter.delete(key);
+            dispatchMediaReady('photo-thumbnail', rec);
+            return cachedThumb;
+          }
+        }
+        const full = await ensureReceptionPhoto(rec, label);
+        if (!full) throw new Error(`La fotografía ${label || ''} no está disponible.`);
+        const thumb = await makeThumbnailDataUrl(full);
+        if (!thumb) throw new Error('No se pudo preparar la miniatura.');
+        if (fileId) await thumbnailDataCacheSet(fileId, thumb);
+        setReceptionPhotoThumbnail(rec, label, thumb, 'ready');
+        mediaRetryAfter.delete(key);
+        dispatchMediaReady('photo-thumbnail', rec);
+        return thumb;
+      } catch (error) {
+        mediaRetryAfter.set(key, Date.now() + 15000);
+        setReceptionPhotoThumbnail(rec, label, '', 'error');
+        dispatchMediaReady('photo-thumbnail', rec);
+        console.warn('No se pudo cargar miniatura de fotografía', rec?.number || rec?.id || '', label || '', error);
+        return '';
+      } finally {
+        mediaPrimeInFlight.delete(key);
+      }
+    })();
+    mediaPrimeInFlight.set(key, task);
+    return task;
+  }
+
+  function scheduleReceptionPhotoThumbnail(rec, label) {
+    if (!rec || !label) return;
+    if (cachedReceptionPhotoThumbnail(rec, label)) return;
+    const status = receptionPhotoThumbnailStatus(rec, label);
+    if (status === 'missing') return;
+    const key = `${receptionVisualKey(rec)}|${photoLabelKey(label)}`;
+    if (receptionPhotoThumbnailQueued.has(key) || mediaPrimeInFlight.has(`photo-thumb:${receptionVisualKey(rec)}:${String(rec?.photos?.[receptionPhotoIndex(rec, label)]?.dataUrl?.fileId || photoLabelKey(label))}`)) return;
+    receptionPhotoThumbnailQueued.add(key);
+    receptionPhotoThumbnailQueue.push({ rec, label, key });
+    const run = () => {
+      while (receptionPhotoThumbnailWorkers < 3 && receptionPhotoThumbnailQueue.length) {
+        const item = receptionPhotoThumbnailQueue.shift();
+        receptionPhotoThumbnailWorkers += 1;
+        ensureReceptionPhotoThumbnail(item.rec, item.label)
+          .catch(() => '')
+          .finally(() => {
+            receptionPhotoThumbnailQueued.delete(item.key);
+            receptionPhotoThumbnailWorkers = Math.max(0, receptionPhotoThumbnailWorkers - 1);
+            run();
+          });
+      }
+    };
+    run();
+  }
+
   async function ensureReceptionPhotos(rec) {
     if (!rec) return [];
-    const existing = cachedPhotos(rec);
-    if (Array.isArray(existing) && existing.some(p => typeof p?.dataUrl === 'string' && p.dataUrl)) return existing;
     const refs = Array.isArray(rec.photos) ? rec.photos : [];
-    if (!refs.some(p => isRemoteMediaRef(p?.dataUrl))) return refs;
+    const existing = cachedPhotos(rec);
+    const remoteIndexes = refs.map((p, index) => isRemoteMediaRef(p?.dataUrl) ? index : -1).filter(index => index >= 0);
+    const fullyHydrated = remoteIndexes.length > 0 && remoteIndexes.every(index => typeof existing?.[index]?.dataUrl === 'string' && existing[index].dataUrl);
+    if (fullyHydrated) return existing;
+    if (!remoteIndexes.length) return refs;
     const key = `photos:${receptionVisualKey(rec)}`;
     if (Date.now() < Number(mediaRetryAfter.get(key) || 0)) return refs;
     if (mediaPrimeInFlight.has(key)) return mediaPrimeInFlight.get(key);
@@ -1160,7 +1351,7 @@ globalThis.AM_CLOUD_SYNC = (() => {
     for (const k of keys(item)) {
       const list = photoCache.get(k);
       if (Array.isArray(list)) {
-        const count = list.filter(x => x?.dataUrl).length;
+        const count = list.filter(x => typeof x?.dataUrl === 'string' && x.dataUrl).length;
         if (count > bestCount) { best = list; bestCount = count; }
       }
     }
@@ -1230,7 +1421,8 @@ globalThis.AM_CLOUD_SYNC = (() => {
     ping, request, loginAdmin, loginEmployee, logout, configureCredentials,
     snapshot, saveNow, saveReceptionNow, queueSave, fetchLatest, applySnapshot, loadLatest, ready,
     enqueueBackgroundSave, processBackgroundOutbox, retryBackgroundSave, backgroundStatus,
-    cacheInvoices, cachedInvoices, clearInvoiceCache, cachePhotos, cachedPhotos, cachedThumbnail, thumbnailStatus, ensureReceptionThumbnail, ensureReceptionPhotos, ensureReceptionInvoices, forgetMediaRefs, purgeLocalReceptionCaches,
+    cacheInvoices, cachedInvoices, clearInvoiceCache, cachePhotos, cachedPhotos, cachedThumbnail, thumbnailStatus, ensureReceptionThumbnail,
+    cachedReceptionPhoto, ensureReceptionPhoto, cachedReceptionPhotoThumbnail, receptionPhotoThumbnailStatus, ensureReceptionPhotoThumbnail, scheduleReceptionPhotoThumbnail, ensureReceptionPhotos, ensureReceptionInvoices, forgetMediaRefs, purgeLocalReceptionCaches,
     loadIndex, loadReception, archiveReception, trashReception, restoreReception, activateReception, pruneMedia, purgeReception,
     publicClient, publicTracking, publicAuthorize, publicAcknowledgePhotos, publicConfirmTrackingRequest, loadPublicSnapshot,
     _integrationStage: 'stage4.18-integrity', _build: BUILD

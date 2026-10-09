@@ -3868,9 +3868,9 @@ document.addEventListener("click", async (event) => {
   const rec = state().receptions.find(item => item.id === button.dataset.id);
   if (!rec) return;
   try {
-    const photos = await globalThis.AM_CLOUD_SYNC?.ensureReceptionPhotos?.(rec);
-    const front = (Array.isArray(photos) ? photos : []).find(photo => photoLabelKey(photo?.label) === "frente") || photos?.[0];
-    if (front?.dataUrl) openImagePreviewFromData(front.dataUrl, `Frente - ${rec.number || ""}`, mobileVehicleTitle(rec));
+    const dataUrl = await globalThis.AM_CLOUD_SYNC?.ensureReceptionPhoto?.(rec, "Frente");
+    if (typeof dataUrl === "string" && dataUrl) openImagePreviewFromData(dataUrl, `Frente - ${rec.number || ""}`, mobileVehicleTitle(rec));
+    else toast("No se pudo cargar la fotografía frontal.", "warn");
   } catch (error) { console.warn("No se pudo abrir fotografía frontal", error); }
 }, true);
 
@@ -3887,7 +3887,7 @@ window.addEventListener("am-cloud-media-ready", (event) => {
   clearTimeout(adminMediaRenderTimer);
   adminMediaRenderTimer = setTimeout(() => {
     try {
-      if (event?.detail?.kind === "thumbnail") {
+      if (["thumbnail", "photo-thumbnail"].includes(event?.detail?.kind)) {
         renderReceptionTable();
         return;
       }
@@ -4298,10 +4298,14 @@ function frontReceptionPhoto(rec) {
 function receptionPhotos(rec) {
   const own = Array.isArray(rec?.photos) ? rec.photos : [];
   const cached = globalThis.AM_CLOUD_SYNC?.cachedPhotos?.(rec);
-  if (Array.isArray(cached) && cached.some((photo) => typeof photo?.dataUrl === 'string' && photo.dataUrl)) return cached;
-  if (own.some((photo) => typeof photo?.dataUrl === 'string' && photo.dataUrl)) return own;
-  // V4.18: las referencias Drive se hidratan en segundo plano. La tabla se muestra
-  // inmediatamente y una fotografía lenta/ausente no bloquea los datos del dashboard.
+  if (Array.isArray(cached) && cached.some((photo) => typeof photo?.dataUrl === 'string' && photo.dataUrl)) {
+    const pendingRemote = own.some((photo, index) => photo?.dataUrl && typeof photo.dataUrl === 'object' && !(typeof cached?.[index]?.dataUrl === 'string' && cached[index].dataUrl));
+    if (pendingRemote) globalThis.AM_CLOUD_SYNC?.ensureReceptionPhotos?.(rec).catch(() => {});
+    return cached.map((photo) => ({ ...photo, dataUrl: typeof photo?.dataUrl === 'string' ? photo.dataUrl : '' }));
+  }
+  if (own.some((photo) => typeof photo?.dataUrl === 'string' && photo.dataUrl)) return own.map((photo) => ({ ...photo, dataUrl: typeof photo?.dataUrl === 'string' ? photo.dataUrl : '' }));
+  // V4.18.4: una caché parcial nunca se trata como si todas las fotos estuvieran listas.
+  // Las referencias Drive se hidratan en segundo plano y nunca se entregan a <img src>.
   if (own.some((photo) => photo?.dataUrl && typeof photo.dataUrl === 'object')) {
     globalThis.AM_CLOUD_SYNC?.ensureReceptionPhotos?.(rec).catch(() => {});
   }
@@ -4325,6 +4329,26 @@ function dashboardThumbnailMarkup(rec, className = "") {
   }
   const label = status === "missing" ? "Sin fotografía" : status === "error" ? "Imagen no disponible" : "Cargando…";
   return `<div class="table-thumb table-thumb-empty dashboard-thumb ${status === "loading" ? "is-loading" : status === "error" ? "is-error" : "is-missing"} ${className}" aria-label="${esc(label)}">${esc(label)}</div>`;
+}
+
+function dashboardCardThumbnailInfo(rec, label) {
+  if (!rec) return { src: "", status: "missing" };
+  const cloud = globalThis.AM_CLOUD_SYNC;
+  const src = cloud?.cachedReceptionPhotoThumbnail?.(rec, label) || "";
+  let status = cloud?.receptionPhotoThumbnailStatus?.(rec, label) || (src ? "ready" : "loading");
+  if (!src && status === "loading") cloud?.scheduleReceptionPhotoThumbnail?.(rec, label);
+  if (src) status = "ready";
+  return { src, status };
+}
+
+function dashboardCardThumbnailMarkup(rec, label, className = "card-thumb dashboard-thumb") {
+  const { src, status } = dashboardCardThumbnailInfo(rec, label);
+  const shortLabel = /reverso/i.test(label) ? "Reverso" : "Frente";
+  if (src) {
+    return `<button type="button" class="table-thumb ${className}" data-action="open-image-preview" data-id="${esc(rec.id)}" data-label="${esc(label)}" title="Ver ${esc(label)}"><img src="${src}" alt="${esc(label)} ${esc(rec.vehicle?.marca || "vehículo")}"></button>`;
+  }
+  const text = status === "missing" ? `Sin ${shortLabel.toLowerCase()}` : status === "error" ? "Imagen no disponible" : "Cargando…";
+  return `<div class="table-thumb table-thumb-empty ${className} ${status === "loading" ? "is-loading" : status === "error" ? "is-error" : "is-missing"}" aria-label="${esc(text)}">${esc(text)}</div>`;
 }
 
 function photoLabelKey(value) {
@@ -4377,7 +4401,10 @@ function mobileVehiclePhoto(rec) {
 }
 
 function mobileVehicleCardBackPhoto(rec) {
-  return receptionPhotoByLabel(rec, "Tarjeta reverso")?.dataUrl || "";
+  const cached = globalThis.AM_CLOUD_SYNC?.cachedReceptionPhoto?.(rec, "Tarjeta reverso") || "";
+  if (typeof cached === "string" && cached) return cached;
+  const photo = receptionPhotoByLabel(rec, "Tarjeta reverso");
+  return typeof photo?.dataUrl === "string" ? photo.dataUrl : "";
 }
 
 function mobileVehicleStatusClass(status = "") {
@@ -4470,9 +4497,9 @@ function renderMobileVehicleCard(rec, options = {}) {
   return `
     <article class="mobile-vehicle-card" ${attrs} role="button" tabindex="0">
       ${trashSelector}
-      <div class="mobile-vehicle-photo ${photo ? "" : "empty"}">
+      <div class="mobile-vehicle-photo ${photo ? "is-clickable" : "empty"}">
         ${notificationBadge}
-        ${photo ? `<img src="${photo}" alt="${esc(mobileVehicleTitle(rec))}">` : `<span>${thumbInfo.status === "missing" ? "Sin fotografía" : thumbInfo.status === "error" ? "Imagen no disponible" : "Cargando imagen…"}</span>`}
+        ${photo ? `<img src="${photo}" alt="${esc(mobileVehicleTitle(rec))}" data-action="open-dashboard-thumbnail" data-id="${esc(rec.id)}" role="button" tabindex="0" title="Ver fotografía en grande">` : `<span>${thumbInfo.status === "missing" ? "Sin fotografía" : thumbInfo.status === "error" ? "Imagen no disponible" : "Cargando imagen…"}</span>`}
       </div>
       <div class="mobile-vehicle-info">
         <span class="mobile-vehicle-status ${mobileVehicleStatusClass(status)}">${esc(status)}</span>
@@ -4573,8 +4600,12 @@ function dataUrlToFile(dataUrl, fileName = "tarjeta-reverso.jpg") {
 
 async function shareMobileCardBack(recId) {
   const rec = state().receptions.find((item) => item.id === recId);
-  const dataUrl = mobileVehicleCardBackPhoto(rec);
-  if (!rec || !dataUrl) {
+  if (!rec) return;
+  let dataUrl = mobileVehicleCardBackPhoto(rec);
+  if (!dataUrl && rawReceptionPhotoByLabel(rec, "Tarjeta reverso")?.dataUrl) {
+    dataUrl = await globalThis.AM_CLOUD_SYNC?.ensureReceptionPhoto?.(rec, "Tarjeta reverso") || "";
+  }
+  if (!dataUrl) {
     toast("Este expediente no tiene tarjeta reverso cargada.", "warn");
     return;
   }
@@ -4608,8 +4639,7 @@ async function openMobileCardBackViewer(recId) {
   let dataUrl = mobileVehicleCardBackPhoto(rec);
   if (!dataUrl && rawReceptionPhotoByLabel(rec, "Tarjeta reverso")?.dataUrl) {
     try {
-      await globalThis.AM_CLOUD_SYNC?.ensureReceptionPhotos?.(rec);
-      dataUrl = mobileVehicleCardBackPhoto(rec);
+      dataUrl = await globalThis.AM_CLOUD_SYNC?.ensureReceptionPhoto?.(rec, "Tarjeta reverso") || "";
     } catch (error) { console.warn("No se pudo cargar tarjeta reverso", error); }
   }
   if (!dataUrl) {
@@ -4638,12 +4668,22 @@ async function openMobileCardBackViewer(recId) {
   if (!history.state?.mobileCardViewer) history.pushState({ ...(history.state || {}), mobileCardViewer: true }, "", location.href);
 }
 
-function openImagePreview(recId, label) {
+async function openImagePreview(recId, label) {
   const rec = state().receptions.find((item) => item.id === recId);
   if (!rec) return;
-  const photo = label === "Frente" ? frontReceptionPhoto(rec) : receptionPhotoByLabel(rec, label);
-  if (!photo?.dataUrl) return;
-  openImagePreviewFromData(photo.dataUrl, `${label} - ${rec.number || ""}`, `${label} ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""}`.trim());
+  let dataUrl = globalThis.AM_CLOUD_SYNC?.cachedReceptionPhoto?.(rec, label) || "";
+  if (!dataUrl) {
+    const photo = label === "Frente" ? frontReceptionPhoto(rec) : receptionPhotoByLabel(rec, label);
+    if (typeof photo?.dataUrl === "string") dataUrl = photo.dataUrl;
+  }
+  if (!dataUrl && rawReceptionPhotoByLabel(rec, label)?.dataUrl) {
+    dataUrl = await globalThis.AM_CLOUD_SYNC?.ensureReceptionPhoto?.(rec, label) || "";
+  }
+  if (!dataUrl) {
+    toast(`No se pudo cargar ${String(label || "la imagen").toLowerCase()}.`, "warn");
+    return;
+  }
+  openImagePreviewFromData(dataUrl, `${label} - ${rec.number || ""}`, `${label} ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""}`.trim());
 }
 
 function openImagePreviewFromData(dataUrl, title = "Imagen", alt = "") {
@@ -4818,7 +4858,9 @@ function renderReceptionTable() {
   tbody.innerHTML = filtered.map((rec) => `
     <tr class="clickable-row ${String(rec.status || "").toUpperCase() === "FINALIZADO" ? "row-finalized" : ""} ${signatureNeedsAdminReview(rec) ? "row-signature-review" : ""}" data-open-file-row="${rec.id}" tabindex="0" title="Abrir seguimiento">
       <td data-label="Vehículo">${isDeleted(rec) ? `<label class="trash-row-selector"><input type="checkbox" data-trash-select-id="${esc(rec.id)}" ${trashSelectedIds.has(rec.id) ? "checked" : ""}><span>Seleccionar</span></label>` : ""}${finalizationNeedsPublish(rec) ? `<button class="btn primary publish-finalization-btn" data-action="publish-finalization" data-id="${rec.id}" title="Publicar finalización al cliente">Publicar finalización</button>` : ""}<strong>${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}</strong>${receptionNotificationAckCount(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count" title="Confirmaciones pendientes">${receptionNotificationAckCount(rec)}</span>` : ""}${signatureNeedsAdminReview(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count signature-review-count" title="Firma pendiente de revisión">!</span>` : ""}<br><small>${rec.vehicle.placa}</small>${adminVehicleCloudStatus(rec)}</td>
-      <td data-label="Miniatura">${dashboardThumbnailMarkup(rec)}</td>
+      <td data-label="Fotografía">${dashboardThumbnailMarkup(rec)}</td>
+      <td data-label="Tarjeta reverso">${dashboardCardThumbnailMarkup(rec, "Tarjeta reverso")}</td>
+      <td data-label="Tarjeta frente">${dashboardCardThumbnailMarkup(rec, "Tarjeta frente")}</td>
       <td data-label="Técnico">${esc(rec.employeeName || "N/D")}</td>
       <td data-label="Tiempo límite">${deadlineBadge(rec)}</td>
       <td data-label="Estado"><span class="pill ${statusTone(rec.status)}">${rec.status}</span>${rec.express ? `<br><small>${esc(rec.serviceType || "Servicio express")}</small>` : ""}</td>
@@ -4826,7 +4868,7 @@ function renderReceptionTable() {
       <td data-label="Cliente">${esc(rec.client.name || "Cliente pendiente")}<br><small>${esc(rec.client.phone || "Sin teléfono")}</small></td>
       <td data-label="Motivo">${esc(shortText(serviceReason(rec) || "Sin motivo registrado", 110))}</td>
       <td data-label="Recepción"><strong>${esc(rec.number)}</strong><br><small>${isDeleted(rec) ? `Papelera: ${esc(new Date(rec.deletedAt).toLocaleDateString("es-SV"))}` : esc(rec.clientToken)}</small><div class="table-actions">${receptionRowActions(rec)}</div></td>
-    </tr>`).join("") || '<tr><td colspan="9">No hay vehículos en este filtro.</td></tr>';
+    </tr>`).join("") || '<tr><td colspan="11">No hay vehículos en este filtro.</td></tr>';
   qsa("[data-admin-filter]").forEach((button) => {
     const isEmployee = button.dataset.adminFilter === "employee" && adminDashboardFilter === "employee" && button.dataset.employeeFilter === adminEmployeeFilter;
     const isDirect = button.dataset.adminFilter !== "employee" && button.dataset.adminFilter === adminDashboardFilter;
@@ -6582,7 +6624,7 @@ function handleActions() {
     if (action === "open-image-preview") {
       event.preventDefault();
       event.stopPropagation();
-      openImagePreview(button.dataset.id, button.dataset.label || "Imagen");
+      await openImagePreview(button.dataset.id, button.dataset.label || "Imagen");
       return;
     }
     if (action === "open-mobile-notification-detail") {
