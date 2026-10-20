@@ -7,7 +7,7 @@
 globalThis.AM_CLOUD_SYNC = (() => {
   'use strict';
 
-  const BUILD = 'v4-stage4.18.4-cards-2026-10-09';
+  const BUILD = 'v4-stage4.18.5-integrity-guard-2026-10-20';
   const DRIVE_REQUIRED = true;
   const CONFIG_KEY = 'am_v4_sync_config_v2';
   const SESSIONS_KEY = 'am_v4_backend_device_sessions_v2';
@@ -31,6 +31,9 @@ globalThis.AM_CLOUD_SYNC = (() => {
   let saveTail = Promise.resolve();
   let lastSnapshot = null;
   let lastRemoteIndex = null;
+  let workspaceFresh = false;
+  let workspaceError = '';
+  let workspaceWarnings = [];
 
   function clone(v, fallback = null) {
     try { return v == null ? fallback : JSON.parse(JSON.stringify(v)); } catch { return fallback; }
@@ -153,6 +156,9 @@ globalThis.AM_CLOUD_SYNC = (() => {
   }
   function setSession(value) {
     if (!value || !value.session) return null;
+    workspaceFresh = false;
+    workspaceError = '';
+    workspaceWarnings = [];
     const clean = {
       session: String(value.session), role: String(value.role || ''), employeeId: cleanEmployeeId(value.employeeId || ''),
       expiresAt: String(value.expiresAt || ''), rememberedDevice: value.rememberedDevice !== false
@@ -165,6 +171,9 @@ globalThis.AM_CLOUD_SYNC = (() => {
     return clean;
   }
   function clearSession(role = '', employeeId = '') {
+    workspaceFresh = false;
+    workspaceError = '';
+    workspaceWarnings = [];
     const current = role ? session(role, employeeId) : session();
     const store = readSessions();
     const r = role || current?.role || '';
@@ -204,7 +213,10 @@ globalThis.AM_CLOUD_SYNC = (() => {
       role: current?.role || '',
       employeeId: current?.employeeId || '',
       hasSession: !!current,
-      ready: !!(cfg.endpoint && current)
+      ready: !!(cfg.endpoint && current),
+      workspaceFresh: !!workspaceFresh,
+      workspaceError: workspaceError || '',
+      workspaceWarnings: workspaceWarnings.length
     };
   }
 
@@ -959,8 +971,18 @@ globalThis.AM_CLOUD_SYNC = (() => {
 
   async function loadRemoteSnapshot(options = {}) {
     if (!hasSession()) throw new Error('Falta iniciar una sesión segura con el backend V4.');
-    const workspace = await request('loadWorkspace', {});
+    workspaceFresh = false;
+    workspaceError = '';
+    workspaceWarnings = [];
+    let workspace;
+    try {
+      workspace = await request('loadWorkspace', {});
+    } catch (error) {
+      workspaceError = String(error?.message || error || 'No se pudo cargar el workspace desde Drive.');
+      throw error;
+    }
     const entries = Array.isArray(workspace.entries) ? workspace.entries : [];
+    workspaceWarnings = Array.isArray(workspace.warnings) ? clone(workspace.warnings, []) : [];
     lastRemoteIndex = {
       ok: true, schemaVersion: workspace.schemaVersion, updatedAt: workspace.updatedAt,
       nextReceptionNumber: workspace.nextReceptionNumber, expedientes: entries
@@ -996,6 +1018,15 @@ globalThis.AM_CLOUD_SYNC = (() => {
     const snap = { version: 4, exportedAt: workspace.updatedAt || new Date().toISOString(), appState, employeeState: null, archives: { master: {}, quick: {} } };
     lastSnapshot = clone(snap, snap);
     applySnapshot(snap);
+    workspaceFresh = true;
+    workspaceError = '';
+    if (workspaceWarnings.length) {
+      try {
+        window.dispatchEvent(new CustomEvent('am-cloud-workspace-warning', {
+          detail: { warnings: clone(workspaceWarnings, []), partial: true }
+        }));
+      } catch {}
+    }
 
     // No esperamos fotografías para entregar el workspace. Se cargan en segundo plano
     // con concurrencia limitada y errores aislados por expediente.
@@ -1147,6 +1178,14 @@ globalThis.AM_CLOUD_SYNC = (() => {
     if (!state.hasSession) throw new Error('No hay una sesión válida con Drive. Vuelva a iniciar sesión en este dispositivo.');
     return state;
   }
+  function requireWritableWorkspace() {
+    const state = requireDriveReady();
+    if (!workspaceFresh) {
+      const detail = workspaceError ? ` Detalle: ${workspaceError}` : '';
+      throw new Error('Guardado bloqueado por seguridad: primero debe cargarse correctamente la información actual desde Drive.' + detail);
+    }
+    return state;
+  }
   function fetchLatest() {
     requireDriveReady();
     return loadRemoteSnapshot({ hydrateMedia: true });
@@ -1164,7 +1203,7 @@ globalThis.AM_CLOUD_SYNC = (() => {
   function saveNow(reason = 'drive-v4', fixedSnapshot = null) {
     // Una falla anterior no debe envenenar para siempre la cola de guardado.
     saveTail = saveTail.catch(() => undefined).then(async () => {
-      requireDriveReady();
+      requireWritableWorkspace();
       const fixed = fixedSnapshot ? clone(fixedSnapshot, {}) : snapshot();
       const previous = clone(lastSnapshot, null);
       try {
@@ -1254,7 +1293,7 @@ globalThis.AM_CLOUD_SYNC = (() => {
    */
   function saveReceptionNow(target, reason = 'targeted-reception-save') {
     saveTail = saveTail.catch(() => undefined).then(async () => {
-      requireDriveReady();
+      requireWritableWorkspace();
       const fixed = snapshot();
       const list = Array.isArray(fixed?.appState?.receptions) ? fixed.appState.receptions : [];
       const rec = list.find((item) => receptionMatchesTarget(item, target));
@@ -1384,12 +1423,12 @@ globalThis.AM_CLOUD_SYNC = (() => {
 
   async function loadIndex() { return request('loadIndex', {}); }
   async function loadReception(id) { return request('loadReception', { id }); }
-  async function archiveReception(id) { return request('archiveReception', { id }); }
-  async function trashReception(id) { return request('trashReception', { id }); }
-  async function restoreReception(id) { return request('restoreReception', { id }); }
-  async function activateReception(id, employeeId = '') { return request('activateReception', { id, employeeId }); }
-  async function pruneMedia(id) { return request('pruneMedia', { id }); }
-  async function purgeReception(id, confirm = 'DELETE_FOREVER') { return request('purgeReception', { id, confirm }); }
+  async function archiveReception(id) { requireWritableWorkspace(); return request('archiveReception', { id }); }
+  async function trashReception(id) { requireWritableWorkspace(); return request('trashReception', { id }); }
+  async function restoreReception(id) { requireWritableWorkspace(); return request('restoreReception', { id }); }
+  async function activateReception(id, employeeId = '') { requireWritableWorkspace(); return request('activateReception', { id, employeeId }); }
+  async function pruneMedia(id) { requireWritableWorkspace(); return request('pruneMedia', { id }); }
+  async function purgeReception(id, confirm = 'DELETE_FOREVER') { requireWritableWorkspace(); return request('purgeReception', { id, confirm }); }
   async function publicClient(token) { return request('publicClient', { token }, { public: true }); }
   async function publicTracking(token) { return request('publicTracking', { token }, { public: true }); }
   async function publicAuthorize(token, evidence = {}) { return request('publicAuthorize', { token, evidence }, { public: true }); }
@@ -1425,6 +1464,6 @@ globalThis.AM_CLOUD_SYNC = (() => {
     cachedReceptionPhoto, ensureReceptionPhoto, cachedReceptionPhotoThumbnail, receptionPhotoThumbnailStatus, ensureReceptionPhotoThumbnail, scheduleReceptionPhotoThumbnail, ensureReceptionPhotos, ensureReceptionInvoices, forgetMediaRefs, purgeLocalReceptionCaches,
     loadIndex, loadReception, archiveReception, trashReception, restoreReception, activateReception, pruneMedia, purgeReception,
     publicClient, publicTracking, publicAuthorize, publicAcknowledgePhotos, publicConfirmTrackingRequest, loadPublicSnapshot,
-    _integrationStage: 'stage4.18-integrity', _build: BUILD
+    _integrationStage: 'stage4.18.5-integrity-guard', _build: BUILD
   };
 })();

@@ -3875,6 +3875,17 @@ document.addEventListener("click", async (event) => {
 }, true);
 
 let adminMediaRenderTimer = 0;
+window.addEventListener("am-cloud-workspace-warning", (event) => {
+  const warnings = Array.isArray(event.detail?.warnings) ? event.detail.warnings : [];
+  if (!warnings.length) return;
+  const numbers = warnings.map((item) => item?.number).filter(Boolean).join(", ");
+  const message = numbers
+    ? `Drive aisló ${warnings.length} expediente(s) con datos dañados: ${numbers}. Los demás vehículos continúan disponibles.`
+    : `Drive aisló ${warnings.length} expediente(s) con datos dañados. Los demás vehículos continúan disponibles.`;
+  console.warn(message, warnings);
+  toast(message, "warn");
+});
+
 window.addEventListener("am-cloud-media-ready", (event) => {
   if (document.body?.dataset.page !== "admin") return;
   if (event?.detail?.kind === "invoices") {
